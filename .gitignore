@@ -8,10 +8,22 @@ __pycache__/
 .ipynb_checkpoints/
 _temp_extract/
 *.npy
+*.pt
+dataset/
+model/
+results/
+code/
+report/
 
-# Keep these
+# Keep these (important files to track)
 !model/weights/best.pt
 !results/plots/*.png
 !results/plots/*.jpg
 !results/predictions/*.jpg
 !results/predictions/*.png
+!README.md
+!requirements.txt
+!.gitignore
+!code/inference.py
+!code/merge_campus_safety.py
+!dataset/data.yaml
