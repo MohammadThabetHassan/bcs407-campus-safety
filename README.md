@@ -6,6 +6,14 @@
 **Model:** YOLOv8s (fine-tuned)  
 **Date:** March 2026
 
+## 👥 Team Members / Contributors
+
+- [Mohammad Thabet Hassan](https://github.com/MohammadThabetHassan)
+- [Ahmed Sami Alameri](https://github.com/AhmedSamiAlameri)
+- [Fahad](https://github.com/fahad6789123)
+- [Omar Alraas](https://github.com/omaralraas)
+- [Obadah Loul](https://github.com/obadah-loul)
+
 ---
 
 ## 🎯 Project Overview
