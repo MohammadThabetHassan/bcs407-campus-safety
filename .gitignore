@@ -1,0 +1,17 @@
+# Large files — don't commit dataset images or weights to GitHub
+campus_safety_merged/
+*.zip
+*.tar.gz
+runs/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+_temp_extract/
+*.npy
+
+# Keep these
+!model/weights/best.pt
+!results/plots/*.png
+!results/plots/*.jpg
+!results/predictions/*.jpg
+!results/predictions/*.png
