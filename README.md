@@ -94,6 +94,7 @@ pip install -r requirements.txt
 
 ```bash
 python code/inference.py --source path/to/image.jpg
+python code/inference.py --source path/to/image.jpg --weights model/weights/best_v2.pt
 ```
 
 ### Run Inference on a Folder
@@ -138,17 +139,21 @@ bcs407-campus-safety/
 ├── dataset/
 │   └── data.yaml             ← dataset config (v2 classes)
 ├── code/
-│   ├── merge_campus_safety.py ← v1 dataset merge script
 │   ├── setup_v2.py            ← v2 dataset rebuild script
 │   ├── augment_v2.py          ← offline augmentation pipeline
 │   └── inference.py           ← live inference script
 ├── results/
-│   ├── plots/
-│   │   ├── v1/               ← v1 confusion matrix, PR curve, F1 curve
-│   │   └── v2/               ← v2 results [coming soon]
-│   └── results.csv           ← epoch-by-epoch training log
+│   ├── plots/                 ← confusion matrix, PR curve, F1 curve, training plots
+│   │   ├── results.png
+│   │   ├── confusion_matrix.png
+│   │   └── ...
+│   ├── predictions/           ← sample annotated test images
+│   └── results.csv            ← epoch-by-epoch training log
 ├── docs/
 │   └── index.html            ← GitHub Pages live demo
+├── contributors/
+│   └── CONTRIBUTORS.md       ← team roles and contact info
+├── LICENSE
 ├── requirements.txt
 ├── .gitignore
 └── README.md

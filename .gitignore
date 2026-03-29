@@ -25,7 +25,6 @@ report/
 !requirements.txt
 !.gitignore
 !code/inference.py
-!code/merge_campus_safety.py
 !code/setup_v2.py
 !code/augment_v2.py
 !dataset/data.yaml
