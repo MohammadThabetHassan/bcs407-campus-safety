@@ -1,10 +1,10 @@
 {
   "name": "bcs407-campus-safety",
-  "version": "1.0.0",
-  "description": "BCS407 Campus Safety Detection System - Real-time object detection for campus safety monitoring",
-  "main": "web/index.html",
+  "version": "2.0.0",
+  "description": "BCS407 Campus Safety Detection System - Real-time YOLOv8 object detection for campus safety monitoring",
+  "main": "docs/index.html",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "python -m http.server 8080 --directory docs"
   },
   "repository": {
     "type": "git",
@@ -15,13 +15,13 @@
     "object detection",
     "campus safety",
     "computer vision",
-    "AI"
+    "AI",
+    "pytorch"
   ],
   "author": "BCS407 Team",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/MohammadThabetHassan/bcs407-campus-safety/issues"
   },
-  "homepage": "https://github.com/MohammadThabetHassan/bcs407-campus-safety#readme",
-  "devDependencies": {}
+  "homepage": "https://github.com/MohammadThabetHassan/bcs407-campus-safety#readme"
 }
