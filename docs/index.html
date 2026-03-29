@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCS407 - Campus Safety Detection System</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+    <meta name="description" content="BCS407 Campus Safety Detection — real-time YOLOv8 object detection for 4 safety classes">
     <style>
         * {
             margin: 0;
@@ -178,7 +178,7 @@
     <div class="container">
         <header>
             <h1>BCS407 Campus Safety Detection System</h1>
-            <p class="subtitle">Real-time AI-powered safety object detection using YOLOv8</p>
+            <p class="subtitle">Real-time AI-powered safety object detection using YOLOv8 | 4 Classes | v2</p>
         </header>
         
         <div class="main-content">
@@ -201,7 +201,17 @@
                 </div>
             </div>
         </div>
-        
+
+        <div class="model-info" style="background:white;border-radius:10px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:30px;">
+            <h3>Model Information</h3>
+            <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+                <tr><td style="padding:6px;font-weight:600;">Model</td><td style="padding:6px;">YOLOv8m (v2, fine-tuned)</td></tr>
+                <tr><td style="padding:6px;font-weight:600;">Classes</td><td style="padding:6px;">wet_floor_sign, fire_alarm, emergency_exit, safety_helmet</td></tr>
+                <tr><td style="padding:6px;font-weight:600;">Input</td><td style="padding:6px;">640 x 640</td></tr>
+                <tr><td style="padding:6px;font-weight:600;">Dataset</td><td style="padding:6px;">~10,000+ images, 70/20/10 split</td></tr>
+            </table>
+        </div>
+
         <div class="footer">
             <p>BCS407 — Artificial Intelligence | Canadian University Dubai | 2026</p>
             <p>Detects: Wet Floor Signs, Fire Alarms, Emergency Exits, Safety Helmets</p>
@@ -212,12 +222,12 @@
         let model = null;
         let videoStream = null;
         let isDetecting = false;
-        const classes = ['safety_helmet', 'emergency_exit', 'fire_alarm', 'wet_floor_sign'];
+        const classes = ['wet_floor_sign', 'fire_alarm', 'emergency_exit', 'safety_helmet'];
         const colors = {
-            'safety_helmet': '#ff6b6b',
-            'emergency_exit': '#4ecdc4',
+            'wet_floor_sign': '#96ceb4',
             'fire_alarm': '#45b7d1',
-            'wet_floor_sign': '#96ceb4'
+            'emergency_exit': '#4ecdc4',
+            'safety_helmet': '#ff6b6b'
         };
 
         // Load the TensorFlow.js model
