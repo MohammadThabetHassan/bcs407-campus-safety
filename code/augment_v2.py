@@ -10,7 +10,7 @@ import numpy as np
 
 random.seed(42)
 
-BASE_DIR = Path("/home/jovyan/bcs407_v2")
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / "campus_safety_v2"
 TRAIN_IMG = DATA_DIR / "train" / "images"
 TRAIN_LBL = DATA_DIR / "train" / "labels"
@@ -196,8 +196,8 @@ print(f"\nTotal augmented: {all_augmented}")
 
 print("\n=== FINAL STATS ===")
 for cn in CLASS_NAMES:
-    orig = len(list((TRAIN_LBL / f"{cn}_*.txt").glob("*")))
-    aug = len(list((TRAIN_LBL / f"aug_{cn}_*.txt").glob("*")))
+    orig = len(list(TRAIN_LBL.glob(f"{cn}_*.txt")))
+    aug = len(list(TRAIN_LBL.glob(f"aug_{cn}_*.txt")))
     print(f"  {cn}: {orig} original + {aug} augmented = {orig + aug} total")
 
 print("\nDone!")
