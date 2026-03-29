@@ -24,7 +24,9 @@ report/
 !README.md
 !requirements.txt
 !.gitignore
+!code/
 !code/inference.py
 !code/setup_v2.py
 !code/augment_v2.py
+!code/train_v2.sh
 !dataset/data.yaml
