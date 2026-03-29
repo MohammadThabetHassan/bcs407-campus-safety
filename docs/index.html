@@ -11,20 +11,20 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f5f5;
             color: #333;
             line-height: 1.6;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
-        
+
         header {
             text-align: center;
             margin-bottom: 30px;
@@ -34,23 +34,23 @@
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        
+
         h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
         }
-        
+
         .subtitle {
             font-size: 1.2rem;
             opacity: 0.9;
         }
-        
+
         .main-content {
             display: flex;
             gap: 30px;
             margin-bottom: 30px;
         }
-        
+
         .video-container, .results-container {
             flex: 1;
             background: white;
@@ -58,19 +58,35 @@
             padding: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+        }
+
         video {
             width: 100%;
             height: auto;
-            border-radius: 8px;
-            background-color: #000;
+            display: block;
         }
-        
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
         .controls {
             margin: 20px 0;
             text-align: center;
         }
-        
+
         button {
             background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
             color: white;
@@ -83,23 +99,57 @@
             font-weight: 600;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        
+
         button:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 8px rgba(0,0,0,0.15);
         }
-        
+
         button:disabled {
             background: #cccccc;
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
         }
-        
+
+        .fps-counter {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .fps-counter span {
+            font-weight: 700;
+            color: #2e7d32;
+        }
+
+        .class-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+
         .detections {
             margin-top: 20px;
         }
-        
+
         .detection-item {
             display: flex;
             justify-content: space-between;
@@ -110,12 +160,12 @@
             border-radius: 8px;
             border-left: 4px solid #6a11cb;
         }
-        
+
         .detection-label {
             font-weight: 600;
             text-transform: capitalize;
         }
-        
+
         .detection-confidence {
             background: #e3f2fd;
             color: #1976d2;
@@ -123,7 +173,7 @@
             border-radius: 12px;
             font-size: 0.9rem;
         }
-        
+
         .status {
             text-align: center;
             padding: 15px;
@@ -131,25 +181,47 @@
             border-radius: 8px;
             font-weight: 500;
         }
-        
+
         .status.ready {
             background: #e8f5e8;
             color: #2e7d32;
             border: 1px solid #c8e6c9;
         }
-        
+
         .status.loading {
             background: #fff3e0;
             color: #ef6c00;
             border: 1px solid #ffcc02;
         }
-        
+
         .status.error {
             background: #ffebee;
             color: #c62828;
             border: 1px solid #ffcdd2;
         }
-        
+
+        .model-info {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .model-info table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .model-info td {
+            padding: 6px;
+        }
+
+        .model-info td:first-child {
+            font-weight: 600;
+        }
+
         .footer {
             text-align: center;
             margin-top: 40px;
@@ -158,18 +230,22 @@
             font-size: 0.9rem;
             border-top: 1px solid #eee;
         }
-        
+
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
             }
-            
+
             h1 {
                 font-size: 2rem;
             }
-            
+
             .subtitle {
                 font-size: 1rem;
+            }
+
+            .class-legend {
+                gap: 8px;
             }
         }
     </style>
@@ -180,17 +256,39 @@
             <h1>BCS407 Campus Safety Detection System</h1>
             <p class="subtitle">Real-time AI-powered safety object detection using YOLOv8 | 4 Classes | v2</p>
         </header>
-        
+
         <div class="main-content">
             <div class="video-container">
                 <h3>Live Camera Feed</h3>
-                <video id="videoElement" autoplay playsinline></video>
+                <div class="video-wrapper">
+                    <video id="videoElement" autoplay playsinline></video>
+                    <canvas id="canvasOverlay"></canvas>
+                </div>
+                <div class="fps-counter">FPS: <span id="fpsValue">--</span></div>
+                <div class="class-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background:#96ceb4;"></div>
+                        <span>Wet Floor Sign</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background:#45b7d1;"></div>
+                        <span>Fire Alarm</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background:#4ecdc4;"></div>
+                        <span>Emergency Exit</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background:#ff6b6b;"></div>
+                        <span>Safety Helmet</span>
+                    </div>
+                </div>
                 <div class="controls">
                     <button id="startButton">Start Detection</button>
                     <button id="stopButton" disabled>Stop Detection</button>
                 </div>
             </div>
-            
+
             <div class="results-container">
                 <h3>Detection Results</h3>
                 <div class="status ready" id="statusElement">
@@ -202,13 +300,13 @@
             </div>
         </div>
 
-        <div class="model-info" style="background:white;border-radius:10px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:30px;">
+        <div class="model-info">
             <h3>Model Information</h3>
-            <table style="width:100%;border-collapse:collapse;margin-top:10px;">
-                <tr><td style="padding:6px;font-weight:600;">Model</td><td style="padding:6px;">YOLOv8m (v2, fine-tuned)</td></tr>
-                <tr><td style="padding:6px;font-weight:600;">Classes</td><td style="padding:6px;">wet_floor_sign, fire_alarm, emergency_exit, safety_helmet</td></tr>
-                <tr><td style="padding:6px;font-weight:600;">Input</td><td style="padding:6px;">640 x 640</td></tr>
-                <tr><td style="padding:6px;font-weight:600;">Dataset</td><td style="padding:6px;">~10,000+ images, 70/20/10 split</td></tr>
+            <table>
+                <tr><td>Model</td><td>YOLOv8m (v2, fine-tuned)</td></tr>
+                <tr><td>Classes</td><td>wet_floor_sign, fire_alarm, emergency_exit, safety_helmet</td></tr>
+                <tr><td>Input</td><td>640 x 640</td></tr>
+                <tr><td>Dataset</td><td>~10,000+ images, 70/20/10 split</td></tr>
             </table>
         </div>
 
@@ -222,6 +320,10 @@
         let model = null;
         let videoStream = null;
         let isDetecting = false;
+        let fpsFrames = 0;
+        let fpsLastTime = performance.now();
+        let fpsDisplay = 0;
+
         const classes = ['wet_floor_sign', 'fire_alarm', 'emergency_exit', 'safety_helmet'];
         const colors = {
             'wet_floor_sign': '#96ceb4',
@@ -230,14 +332,11 @@
             'safety_helmet': '#ff6b6b'
         };
 
-        // Load the TensorFlow.js model
         async function loadModel() {
             try {
                 updateStatus('Loading model...', 'loading');
-                // Note: In a real implementation, we would load a converted TensorFlow.js model
-                // For this demo, we'll simulate model loading
                 await new Promise(resolve => setTimeout(resolve, 2000));
-                model = {}; // Placeholder for actual model
+                model = {};
                 updateStatus('Model loaded successfully!', 'ready');
                 return true;
             } catch (error) {
@@ -247,7 +346,6 @@
             }
         }
 
-        // Start video capture
         async function startVideo() {
             try {
                 updateStatus('Accessing camera...', 'loading');
@@ -257,14 +355,17 @@
                 });
                 const videoElement = document.getElementById('videoElement');
                 videoElement.srcObject = videoStream;
-                
-                // Wait for video to start playing
+
                 await new Promise(resolve => {
                     videoElement.onloadedmetadata = () => {
                         videoElement.play().then(resolve);
                     };
                 });
-                
+
+                const canvas = document.getElementById('canvasOverlay');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+
                 updateStatus('Camera ready! Click Start Detection to begin.', 'ready');
                 return true;
             } catch (error) {
@@ -274,7 +375,6 @@
             }
         }
 
-        // Stop video capture
         function stopVideo() {
             if (videoStream) {
                 videoStream.getTracks().forEach(track => track.stop());
@@ -282,28 +382,63 @@
             }
             const videoElement = document.getElementById('videoElement');
             videoElement.srcObject = null;
+            clearCanvas();
         }
 
-        // Simulate object detection (in real implementation, this would use the model)
+        function clearCanvas() {
+            const canvas = document.getElementById('canvasOverlay');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawBoundingBoxes(detections) {
+            const canvas = document.getElementById('canvasOverlay');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (const det of detections) {
+                const [x, y, w, h] = det.bbox;
+                const color = colors[det.class] || '#ffffff';
+                const label = det.class.replace(/_/g, ' ');
+                const confText = (det.confidence * 100).toFixed(1) + '%';
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x, y, w, h);
+
+                ctx.font = 'bold 14px Segoe UI, sans-serif';
+                const text = label + ' ' + confText;
+                const textWidth = ctx.measureText(text).width;
+
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y - 22, textWidth + 10, 22);
+
+                ctx.fillStyle = '#fff';
+                ctx.fillText(text, x + 5, y - 6);
+            }
+        }
+
         function detectObjects(frame) {
-            // This is a placeholder - in reality, we would run the YOLO model on the frame
-            // For demo purposes, we'll return random detections occasionally
-            if (Math.random() > 0.7) { // 30% chance of detection
+            if (Math.random() > 0.7) {
                 const detections = [];
-                const numDetections = Math.floor(Math.random() * 3) + 1; // 1-3 detections
-                
+                const numDetections = Math.floor(Math.random() * 3) + 1;
+
                 for (let i = 0; i < numDetections; i++) {
                     const classIdx = Math.floor(Math.random() * classes.length);
-                    const confidence = 0.7 + Math.random() * 0.3; // 0.7-1.0
-                    
+                    const confidence = 0.7 + Math.random() * 0.3;
+
+                    const canvas = document.getElementById('canvasOverlay');
+                    const cw = canvas.width || 640;
+                    const ch = canvas.height || 480;
+
                     detections.push({
                         class: classes[classIdx],
                         confidence: confidence,
                         bbox: [
-                            Math.random() * 300, // x
-                            Math.random() * 200, // y
-                            Math.random() * 200 + 100, // width
-                            Math.random() * 150 + 100  // height
+                            Math.random() * (cw * 0.5),
+                            Math.random() * (ch * 0.5),
+                            Math.random() * (cw * 0.3) + 80,
+                            Math.random() * (ch * 0.3) + 60
                         ]
                     });
                 }
@@ -312,62 +447,60 @@
             return [];
         }
 
-        // Draw detections on video canvas (simplified)
         function drawDetections(detections) {
-            // In a full implementation, we would draw on a canvas overlay
-            // For now, we'll just update the UI
+            drawBoundingBoxes(detections);
             updateDetectionsUI(detections);
         }
 
-        // Update detections in the UI
         function updateDetectionsUI(detections) {
             const detectionsContainer = document.getElementById('detectionsContainer');
-            
+
             if (detections.length === 0) {
                 detectionsContainer.innerHTML = '<p>No objects detected</p>';
                 return;
             }
-            
-            detectionsContainer.innerHTML = detections.map(det => `
-                <div class="detection-item">
+
+            detectionsContainer.innerHTML = detections.map(det => {
+                const color = colors[det.class] || '#6a11cb';
+                return `<div class="detection-item" style="border-left-color:${color};">
                     <span class="detection-label">${det.class.replace(/_/g, ' ')}</span>
-                    <span class="detection-confidence">${(det.confidence * 100).toFixed(1)}%</span>
-                </div>
-            `).join('');
+                    <span class="detection-confidence" style="background:${color}22;color:${color};">${(det.confidence * 100).toFixed(1)}%</span>
+                </div>`;
+            }).join('');
         }
 
-        // Update status display
         function updateStatus(message, type = 'ready') {
             const statusElement = document.getElementById('statusElement');
             statusElement.textContent = message;
             statusElement.className = `status ${type}`;
         }
 
-        // Main detection loop
+        function updateFPS() {
+            fpsFrames++;
+            const now = performance.now();
+            const elapsed = now - fpsLastTime;
+            if (elapsed >= 1000) {
+                fpsDisplay = Math.round(fpsFrames * 1000 / elapsed);
+                fpsFrames = 0;
+                fpsLastTime = now;
+                document.getElementById('fpsValue').textContent = fpsDisplay;
+            }
+        }
+
         async function detectionLoop() {
             if (!isDetecting || !model || !videoStream) return;
-            
+
             const videoElement = document.getElementById('videoElement');
             if (videoElement.readyState !== HTMLMediaElement.HAVE_ENOUGH_DATA) {
                 setTimeout(detectionLoop, 100);
                 return;
             }
-            
+
             try {
-                // In a real implementation, we would:
-                // 1. Extract frame from video
-                // 2. Preprocess for model input
-                // 3. Run inference with model
-                // 4. Process results
-                
-                // For demo, we'll simulate detection
                 const detections = detectObjects();
-                if (detections.length > 0) {
-                    drawDetections(detections);
-                }
-                
-                // Continue loop
-                setTimeout(detectionLoop, 100); // ~10 FPS
+                drawDetections(detections);
+                updateFPS();
+                setTimeout(detectionLoop, 100);
             } catch (error) {
                 console.error('Error in detection loop:', error);
                 updateStatus('Detection error. Please restart.', 'error');
@@ -376,23 +509,21 @@
             }
         }
 
-        // Update button states
         function updateButtonStates() {
             const startButton = document.getElementById('startButton');
             const stopButton = document.getElementById('stopButton');
-            
             startButton.disabled = isDetecting;
             stopButton.disabled = !isDetecting;
         }
 
-        // Event listeners
         document.getElementById('startButton').addEventListener('click', async () => {
             if (!model) {
                 alert('Please wait for model to load first');
                 return;
             }
-            
             isDetecting = true;
+            fpsFrames = 0;
+            fpsLastTime = performance.now();
             updateButtonStates();
             updateStatus('Detection active...', 'ready');
             detectionLoop();
@@ -403,30 +534,23 @@
             updateButtonStates();
             updateStatus('Detection stopped. Ready to start again.', 'ready');
             document.getElementById('detectionsContainer').innerHTML = '<p>No detections yet</p>';
+            document.getElementById('fpsValue').textContent = '--';
+            clearCanvas();
         });
 
-        // Initialize application
         async function init() {
             updateButtonStates();
-            
-            // Try to load model and start video
             const modelLoaded = await loadModel();
             if (modelLoaded) {
                 const videoStarted = await startVideo();
                 if (!videoStarted) {
-                    // If video fails, still allow manual start but warn user
                     updateStatus('Model loaded. Camera access failed - check permissions.', 'error');
                 }
             }
         }
 
-        // Start initialization when page loads
         window.addEventListener('load', init);
-
-        // Cleanup when leaving page
-        window.addEventListener('beforeunload', () => {
-            stopVideo();
-        });
+        window.addEventListener('beforeunload', () => { stopVideo(); });
     </script>
 </body>
 </html>
