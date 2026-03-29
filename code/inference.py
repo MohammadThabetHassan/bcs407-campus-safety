@@ -25,7 +25,7 @@ def run_inference(source, conf=0.25, weights="model/weights/best.pt"):
     )
     print(f"\n📊 Detections:")
     print("-" * 50)
-    classes = ["fire_extinguisher", "emergency_exit", "fire_alarm", "wet_floor_sign"]
+    classes = ['wet_floor_sign', 'fire_alarm', 'emergency_exit', 'safety_helmet']
     for r in results:
         for box in r.boxes:
             cls_id = int(box.cls)

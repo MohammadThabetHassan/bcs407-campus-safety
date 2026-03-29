@@ -1,10 +1,11 @@
-path: /home/jovyan/chat/AI_Campus_Safety_Detection_Project-2026_03_28-13_36_31/outputs/campus_safety_merged
+path: ../dataset
 train: train/images
 val: valid/images
 test: test/images
+
 nc: 4
 names:
-- fire_extinguisher
-- emergency_exit
-- fire_alarm
-- wet_floor_sign
+  0: wet_floor_sign
+  1: fire_alarm
+  2: emergency_exit
+  3: safety_helmet
