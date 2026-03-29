@@ -106,7 +106,11 @@ python code/inference.py --source path/to/folder/
 ### Reproduce Dataset Build (v2)
 
 ```bash
-# Place 4 zip files in ~/bcs407_v2/, then:
+# Place these 4 zip files in the repo root, then:
+# - wet-floor-detection1.v2i.yolov8.zip
+# - Fire Alarm.v24i.yolov8 (1).zip
+# - Emergency Exit Signs.v4i.yolov8.zip
+# - Hard Hat Universe.v4i.yolov8.zip
 python code/setup_v2.py
 python code/augment_v2.py
 ```
@@ -114,17 +118,18 @@ python code/augment_v2.py
 ### Reproduce Training (v2)
 
 ```bash
-yolo detect train \
-  data=dataset/data.yaml \
-  model=yolov8m.pt \
-  epochs=100 \
-  imgsz=640 \
-  batch=16 \
-  device=0 \
-  workers=0 \
-  cache=False \
-  cos_lr=True
+bash code/train_v2.sh
 ```
+
+This uses the fixed v2 split builder and a stable training config:
+- `batch=32`
+- `workers=0`
+- `cos_lr=True`
+- `lr0=0.01`
+- `lrf=0.001`
+- `warmup_epochs=5`
+
+`workers=0` is intentional for shared-memory-limited environments. If you have a larger `/dev/shm`, you can raise it later.
 
 ---
 
@@ -169,12 +174,13 @@ bcs407-campus-safety/
 | Pretrained | COCO (ImageNet backbone) |
 | Epochs | 100 |
 | Image Size | 640×640 |
-| Batch Size | 16 |
+| Batch Size | 32 |
 | Optimizer | AdamW (auto) |
 | LR Schedule | Cosine (lr0=0.01, lrf=0.001) |
 | Warmup Epochs | 5 |
 | Augmentations | HSV, flip, mosaic, mixup, copy-paste + offline albumentations |
 | GPU | NVIDIA L4 (23GB) |
+| DataLoader Workers | 0 (safe default for low-shm environments) |
 
 ---
 
