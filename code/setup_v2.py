@@ -2,7 +2,7 @@ import os, zipfile, yaml, shutil, random, uuid
 from pathlib import Path
 
 random.seed(42)
-BASE_DIR = Path("/home/jovyan/bcs407_v2")
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 OUT = BASE_DIR / "campus_safety_v2"
 
 for s in ['train','valid','test']:
