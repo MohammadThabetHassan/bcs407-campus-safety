@@ -14,7 +14,9 @@ IMAGE_EXTENSIONS = (".jpg", ".png", ".jpeg", ".bmp", ".webp")
 
 def parse_args() -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parent.parent
-    parser = argparse.ArgumentParser(description="Apply offline augmentation to the v2 training split.")
+    parser = argparse.ArgumentParser(
+        description="Apply offline augmentation to the v2 training split."
+    )
     parser.add_argument(
         "--dataset-dir",
         default=str(repo_root / "dataset"),
@@ -86,7 +88,9 @@ def save_yolo_bboxes(label_path: Path, bboxes: list[list[float]]) -> None:
             )
 
 
-def clamp_bbox(cx: float, cy: float, width: float, height: float) -> tuple[float, float, float, float]:
+def clamp_bbox(
+    cx: float, cy: float, width: float, height: float
+) -> tuple[float, float, float, float]:
     cx = max(0.0, min(1.0, cx))
     cy = max(0.0, min(1.0, cy))
     width = max(0.0, min(1.0, width))
@@ -106,7 +110,9 @@ def clamp_bbox(cx: float, cy: float, width: float, height: float) -> tuple[float
     return cx, cy, width, height
 
 
-def yolo_to_albumentations(bboxes: list[list[float]], img_w: int, img_h: int) -> tuple[list[list[float]], list[int]]:
+def yolo_to_albumentations(
+    bboxes: list[list[float]], img_w: int, img_h: int
+) -> tuple[list[list[float]], list[int]]:
     boxes: list[list[float]] = []
     classes: list[int] = []
 
@@ -150,15 +156,21 @@ def build_transform() -> A.Compose:
     return A.Compose(
         [
             A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=1.0),
-            A.HueSaturationValue(hue_shift_limit=20, sat_shift_limit=30, val_shift_limit=20, p=1.0),
+            A.HueSaturationValue(
+                hue_shift_limit=20, sat_shift_limit=30, val_shift_limit=20, p=1.0
+            ),
             A.GaussianBlur(blur_limit=(3, 7), p=0.5),
             A.GaussNoise(std_range=(0.01, 0.05), p=0.3),
             A.ToGray(p=0.1),
-            A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=1.0),
+            A.ShiftScaleRotate(
+                shift_limit=0.1, scale_limit=0.1, rotate_limit=15, border_mode=0, p=1.0
+            ),
             A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), p=0.3),
             A.HorizontalFlip(p=0.5),
         ],
-        bbox_params=A.BboxParams(format="pascal_voc", min_visibility=0.3, label_fields=["class_labels"]),
+        bbox_params=A.BboxParams(
+            format="pascal_voc", min_visibility=0.3, label_fields=["class_labels"]
+        ),
     )
 
 
@@ -202,7 +214,11 @@ def main() -> None:
         if not label_files:
             continue
 
-        ratio = args.minority_ratio if class_name in minority_classes else args.default_ratio
+        ratio = (
+            args.minority_ratio
+            if class_name in minority_classes
+            else args.default_ratio
+        )
         target_count = int(len(label_files) * ratio)
         shuffled_indices = list(range(len(label_files)))
         random.shuffle(shuffled_indices)
@@ -231,12 +247,16 @@ def main() -> None:
             alb_boxes, alb_classes = yolo_to_albumentations(bboxes, width, height)
 
             try:
-                result = transform(image=image, bboxes=alb_boxes, class_labels=alb_classes)
+                result = transform(
+                    image=image, bboxes=alb_boxes, class_labels=alb_classes
+                )
                 aug_bboxes = albumentations_to_yolo(
                     result["bboxes"], result["class_labels"], width, height
                 )
             except Exception as exc:
-                print(f"    {class_name}: skipped one file due to augmentation error: {exc}")
+                print(
+                    f"    {class_name}: skipped one file due to augmentation error: {exc}"
+                )
                 continue
 
             if not aug_bboxes:
@@ -253,7 +273,9 @@ def main() -> None:
             augmented += 1
 
         total_augmented += augmented
-        print(f"  {class_name}: {originals} -> {augmented} augmented (of {len(label_files)} total)")
+        print(
+            f"  {class_name}: {originals} -> {augmented} augmented (of {len(label_files)} total)"
+        )
 
     print(f"\nTotal augmented: {total_augmented}")
     print("\n=== Final Stats ===")
