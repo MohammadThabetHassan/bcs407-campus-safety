@@ -87,7 +87,17 @@ The system detects four critical safety objects found in indoor campus environme
 ```bash
 git clone https://github.com/MohammadThabetHassan/bcs407-campus-safety.git
 cd bcs407-campus-safety
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+### Minimal Reproduction Flow
+
+```bash
+python code/setup_v2.py
+python code/augment_v2.py
+bash code/train_v2.sh
 ```
 
 ### Run Inference on an Image
@@ -101,6 +111,7 @@ python code/inference.py --source path/to/image.jpg --weights model/weights/best
 
 ```bash
 python code/inference.py --source path/to/folder/
+python code/inference.py --source 0 --show
 ```
 
 ### Reproduce Dataset Build (v2)
@@ -114,6 +125,8 @@ python code/inference.py --source path/to/folder/
 python code/setup_v2.py
 python code/augment_v2.py
 ```
+
+By default these scripts rebuild into `dataset/`, not a separate ad-hoc folder outside the repo.
 
 ### Reproduce Training (v2)
 
@@ -131,6 +144,12 @@ This uses the fixed v2 split builder and a stable training config:
 
 `workers=0` is intentional for shared-memory-limited environments. If you have a larger `/dev/shm`, you can raise it later.
 
+### Resume Training
+
+```bash
+yolo detect train resume model=runs/detect/campus_safety_v2_fixed/weights/last.pt
+```
+
 ---
 
 ## 📂 Project Structure
@@ -146,7 +165,8 @@ bcs407-campus-safety/
 ├── code/
 │   ├── setup_v2.py            ← v2 dataset rebuild script
 │   ├── augment_v2.py          ← offline augmentation pipeline
-│   └── inference.py           ← live inference script
+│   ├── inference.py           ← inference / webcam helper
+│   └── train_v2.sh            ← stable v2 training entrypoint
 ├── results/
 │   ├── plots/                 ← confusion matrix, PR curve, F1 curve, training plots
 │   │   ├── results.png
@@ -181,6 +201,12 @@ bcs407-campus-safety/
 | Augmentations | HSV, flip, mosaic, mixup, copy-paste + offline albumentations |
 | GPU | NVIDIA L4 (23GB) |
 | DataLoader Workers | 0 (safe default for low-shm environments) |
+
+## Notes
+
+- The repo stores the scripts and metadata needed to rebuild and retrain the model, but not the large training dataset zips.
+- Put the four source dataset zip files in the repo root before running `python code/setup_v2.py`.
+- If training crashes with `bus error` or `No space left on device`, lower `workers` first before lowering `batch`.
 
 ---
 

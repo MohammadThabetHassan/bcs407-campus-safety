@@ -1,73 +1,114 @@
 """
 BCS407 — Campus Safety Monitoring
-Live Inference Script
-
-Usage:
-  python code/inference.py --source path/to/image.jpg
-  python code/inference.py --source path/to/folder/
-  python code/inference.py --source 0   # webcam
-  python code/inference.py --source path/to/image.jpg --weights model/weights/best_v2.pt
+Inference helper for image, folder, video, or webcam sources.
 """
 
 import argparse
 import sys
-from ultralytics import YOLO
 from pathlib import Path
 
-CLASS_NAMES = ['wet_floor_sign', 'fire_alarm', 'emergency_exit', 'safety_helmet']
+from ultralytics import YOLO
 
-def run_inference(source, conf=0.25, weights="model/weights/best.pt"):
+
+CLASS_NAMES = ["wet_floor_sign", "fire_alarm", "emergency_exit", "safety_helmet"]
+
+
+def parse_args() -> argparse.Namespace:
+    repo_root = Path(__file__).resolve().parent.parent
+    parser = argparse.ArgumentParser(description="Campus Safety Object Detection")
+    parser.add_argument("--source", type=str, required=True, help="Image, folder, video path, URL, or webcam index.")
+    parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold.")
+    parser.add_argument(
+        "--weights",
+        type=str,
+        default=str(repo_root / "model" / "weights" / "best.pt"),
+        help="Path to the YOLO weights file.",
+    )
+    parser.add_argument("--project", type=str, default="runs/detect", help="Output project directory.")
+    parser.add_argument("--name", type=str, default="predict", help="Output run name.")
+    parser.add_argument("--device", type=str, default=None, help="Optional device override, for example 0 or cpu.")
+    parser.add_argument("--show", action="store_true", help="Display predictions live when supported.")
+    parser.add_argument("--nosave", action="store_true", help="Do not save rendered prediction outputs.")
+    return parser.parse_args()
+
+
+def validate_inputs(source: str, weights: str) -> Path:
     weights_path = Path(weights)
     if not weights_path.exists():
-        print(f"Error: weights file not found: {weights}")
-        sys.exit(1)
+        raise FileNotFoundError(f"Weights file not found: {weights_path}")
 
-    if source != "0" and not source.isdigit():
-        source_path = Path(source)
-        if not source_path.exists():
-            print(f"Error: source not found: {source}")
-            sys.exit(1)
+    if source.isdigit():
+        return weights_path
 
-    print(f"Loading model: {weights}")
-    model = YOLO(weights)
+    if source.startswith(("http://", "https://", "rtsp://", "rtmp://")):
+        return weights_path
 
-    print(f"Running inference on: {source}")
+    source_path = Path(source)
+    if not source_path.exists():
+        raise FileNotFoundError(f"Source not found: {source_path}")
+
+    return weights_path
+
+
+def label_for_class(class_id: int) -> str:
+    if 0 <= class_id < len(CLASS_NAMES):
+        return CLASS_NAMES[class_id]
+    return f"class_{class_id}"
+
+
+def run_inference(args: argparse.Namespace) -> None:
+    weights_path = validate_inputs(args.source, args.weights)
+
+    print(f"Loading model: {weights_path}")
+    model = YOLO(str(weights_path))
+
+    print(f"Running inference on: {args.source}")
     results = model.predict(
-        source=source,
-        conf=conf,
+        source=args.source,
+        conf=args.conf,
         iou=0.45,
-        save=True,
+        save=not args.nosave,
+        show=args.show,
         show_labels=True,
         show_conf=True,
         line_width=2,
+        project=args.project,
+        name=args.name,
+        device=args.device,
     )
 
     total_detections = 0
+    save_dir = None
     print("\nDetections:")
     print("-" * 50)
-    for r in results:
-        for box in r.boxes:
-            cls_id = int(box.cls)
-            box_conf = float(box.conf)
-            coords = box.xyxy[0].tolist()
-            if 0 <= cls_id < len(CLASS_NAMES):
-                label = CLASS_NAMES[cls_id]
-            else:
-                label = f"class_{cls_id}"
-            print(f"  {label:<25} confidence: {box_conf:.2%}")
-            print(f"     BBox: [{coords[0]:.0f}, {coords[1]:.0f}, {coords[2]:.0f}, {coords[3]:.0f}]")
-            total_detections += 1
-        if len(r.boxes) == 0:
+    for result in results:
+        save_dir = getattr(result, "save_dir", save_dir)
+        if len(result.boxes) == 0:
             print("  No objects detected")
+            continue
+
+        for box in result.boxes:
+            class_id = int(box.cls)
+            confidence = float(box.conf)
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            print(f"  {label_for_class(class_id):<25} confidence: {confidence:.2%}")
+            print(f"     BBox: [{x1:.0f}, {y1:.0f}, {x2:.0f}, {y2:.0f}]")
+            total_detections += 1
 
     print(f"\nTotal detections: {total_detections}")
-    print("Results saved to: runs/detect/predict/")
+    if save_dir and not args.nosave:
+        print(f"Results saved to: {save_dir}")
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        run_inference(args)
+    except FileNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Campus Safety Object Detection")
-    parser.add_argument("--source",  type=str, required=True, help="Image/folder/webcam source (0 for webcam)")
-    parser.add_argument("--conf",    type=float, default=0.25, help="Confidence threshold (0.0-1.0)")
-    parser.add_argument("--weights", type=str, default="model/weights/best.pt",
-                        help="Path to model weights (use best_v2.pt for v2)")
-    args = parser.parse_args()
-    run_inference(args.source, args.conf, args.weights)
+    raise SystemExit(main())
