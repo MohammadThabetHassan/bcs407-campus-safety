@@ -100,10 +100,22 @@ python code/augment_v2.py
 bash code/train_v2.sh
 ```
 
+### Makefile Shortcuts
+
+```bash
+make install
+make setup
+make augment
+make train
+make resume
+make backup DEST=/path/to/backup
+```
+
 ### Train for Free on Colab
 
 Use the notebook here:
 
+- [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MohammadThabetHassan/bcs407-campus-safety/blob/main/notebooks/colab_train_v2.ipynb)
 - [`notebooks/colab_train_v2.ipynb`](/home/jovyan/bcs407_v2/bcs407-campus-safety/notebooks/colab_train_v2.ipynb)
 
 It is set up to:
@@ -164,6 +176,20 @@ This uses the fixed v2 split builder and a stable training config:
 yolo detect train resume model=runs/detect/campus_safety_v2_fixed/weights/last.pt
 ```
 
+### Backup Only What You Need
+
+```bash
+python code/backup_run_artifacts.py --dest /path/to/backup
+```
+
+This copies only:
+- `args.yaml`
+- `results.csv`
+- `weights/best.pt`
+- `weights/last.pt`
+
+That is enough to inspect the run later and resume from `last.pt` without copying the whole `runs/` folder.
+
 ---
 
 ## 📂 Project Structure
@@ -180,7 +206,10 @@ bcs407-campus-safety/
 │   ├── setup_v2.py            ← v2 dataset rebuild script
 │   ├── augment_v2.py          ← offline augmentation pipeline
 │   ├── inference.py           ← inference / webcam helper
+│   ├── backup_run_artifacts.py ← minimal checkpoint backup helper
 │   └── train_v2.sh            ← stable v2 training entrypoint
+├── notebooks/
+│   └── colab_train_v2.ipynb   ← free Colab training notebook
 ├── results/
 │   ├── plots/                 ← confusion matrix, PR curve, F1 curve, training plots
 │   │   ├── results.png
