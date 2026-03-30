@@ -43,7 +43,7 @@ def run_inference(source, conf=0.25, weights="model/weights/best.pt"):
     )
 
     total_detections = 0
-    print(f"\nDetections:")
+    print("\nDetections:")
     print("-" * 50)
     for r in results:
         for box in r.boxes:
@@ -61,7 +61,7 @@ def run_inference(source, conf=0.25, weights="model/weights/best.pt"):
             print("  No objects detected")
 
     print(f"\nTotal detections: {total_detections}")
-    print(f"Results saved to: runs/detect/predict/")
+    print("Results saved to: runs/detect/predict/")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Campus Safety Object Detection")
