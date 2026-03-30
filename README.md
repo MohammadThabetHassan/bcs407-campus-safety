@@ -100,6 +100,20 @@ python code/augment_v2.py
 bash code/train_v2.sh
 ```
 
+### Train for Free on Colab
+
+Use the notebook here:
+
+- [`notebooks/colab_train_v2.ipynb`](/home/jovyan/bcs407_v2/bcs407-campus-safety/notebooks/colab_train_v2.ipynb)
+
+It is set up to:
+- mount Google Drive
+- clone the repo
+- copy the 4 dataset zip files from Drive
+- rebuild and augment the dataset
+- train YOLOv8m
+- save checkpoints back to Drive so you can resume after disconnects
+
 ### Run Inference on an Image
 
 ```bash
