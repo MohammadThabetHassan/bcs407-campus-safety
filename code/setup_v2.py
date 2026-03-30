@@ -42,7 +42,9 @@ DATASETS = [
 
 def parse_args() -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parent.parent
-    parser = argparse.ArgumentParser(description="Build the v2 YOLO dataset from source zip files.")
+    parser = argparse.ArgumentParser(
+        description="Build the v2 YOLO dataset from source zip files."
+    )
     parser.add_argument(
         "--source-dir",
         default=str(repo_root),
@@ -57,7 +59,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_yaml_from_zip(zip_file: zipfile.ZipFile) -> list[str]:
-    yaml_name = next((name for name in zip_file.namelist() if name.endswith("data.yaml")), None)
+    yaml_name = next(
+        (name for name in zip_file.namelist() if name.endswith("data.yaml")), None
+    )
     if yaml_name is None:
         raise FileNotFoundError("No data.yaml found in zip archive.")
 
@@ -77,7 +81,9 @@ def resolve_keep_ids(class_names: list[str], keep_substrings: list[str]) -> set[
     return keep_ids
 
 
-def collect_examples(zip_path: Path, keep_ids: set[int]) -> list[tuple[bytes, str, list[str]]]:
+def collect_examples(
+    zip_path: Path, keep_ids: set[int]
+) -> list[tuple[bytes, str, list[str]]]:
     examples: list[tuple[bytes, str, list[str]]] = []
 
     with zipfile.ZipFile(zip_path, "r") as zip_file:
@@ -86,7 +92,9 @@ def collect_examples(zip_path: Path, keep_ids: set[int]) -> list[tuple[bytes, st
             if suffix not in IMG_EXTENSIONS or "/images/" not in image_name:
                 continue
 
-            label_name = image_name.replace("/images/", "/labels/").rsplit(".", 1)[0] + ".txt"
+            label_name = (
+                image_name.replace("/images/", "/labels/").rsplit(".", 1)[0] + ".txt"
+            )
             try:
                 label_text = zip_file.read(label_name).decode("utf-8")
             except KeyError:
@@ -160,7 +168,9 @@ def main() -> None:
     random.seed(RANDOM_SEED)
     ensure_clean_output(output_dir)
 
-    per_class_examples: dict[int, list[tuple[bytes, str, list[str]]]] = {idx: [] for idx in range(len(CLASS_NAMES))}
+    per_class_examples: dict[int, list[tuple[bytes, str, list[str]]]] = {
+        idx: [] for idx in range(len(CLASS_NAMES))
+    }
 
     for dataset in DATASETS:
         zip_path = source_dir / dataset["zip_name"]
@@ -200,9 +210,15 @@ def main() -> None:
         valid_examples = examples[train_cutoff:valid_cutoff]
         test_examples = examples[valid_cutoff:]
 
-        train_count = write_split(output_dir, "train", target_id, target_name, train_examples)
-        valid_count = write_split(output_dir, "valid", target_id, target_name, valid_examples)
-        test_count = write_split(output_dir, "test", target_id, target_name, test_examples)
+        train_count = write_split(
+            output_dir, "train", target_id, target_name, train_examples
+        )
+        valid_count = write_split(
+            output_dir, "valid", target_id, target_name, valid_examples
+        )
+        test_count = write_split(
+            output_dir, "test", target_id, target_name, test_examples
+        )
         total_written += train_count + valid_count + test_count
 
         print(

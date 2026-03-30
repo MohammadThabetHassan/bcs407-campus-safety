@@ -16,19 +16,37 @@ CLASS_NAMES = ["wet_floor_sign", "fire_alarm", "emergency_exit", "safety_helmet"
 def parse_args() -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description="Campus Safety Object Detection")
-    parser.add_argument("--source", type=str, required=True, help="Image, folder, video path, URL, or webcam index.")
-    parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold.")
+    parser.add_argument(
+        "--source",
+        type=str,
+        required=True,
+        help="Image, folder, video path, URL, or webcam index.",
+    )
+    parser.add_argument(
+        "--conf", type=float, default=0.25, help="Confidence threshold."
+    )
     parser.add_argument(
         "--weights",
         type=str,
         default=str(repo_root / "model" / "weights" / "best.pt"),
         help="Path to the YOLO weights file.",
     )
-    parser.add_argument("--project", type=str, default="runs/detect", help="Output project directory.")
+    parser.add_argument(
+        "--project", type=str, default="runs/detect", help="Output project directory."
+    )
     parser.add_argument("--name", type=str, default="predict", help="Output run name.")
-    parser.add_argument("--device", type=str, default=None, help="Optional device override, for example 0 or cpu.")
-    parser.add_argument("--show", action="store_true", help="Display predictions live when supported.")
-    parser.add_argument("--nosave", action="store_true", help="Do not save rendered prediction outputs.")
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help="Optional device override, for example 0 or cpu.",
+    )
+    parser.add_argument(
+        "--show", action="store_true", help="Display predictions live when supported."
+    )
+    parser.add_argument(
+        "--nosave", action="store_true", help="Do not save rendered prediction outputs."
+    )
     return parser.parse_args()
 
 
