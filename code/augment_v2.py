@@ -1,12 +1,8 @@
-import os
-import yaml
 import random
 import uuid
 from pathlib import Path
 import cv2
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
-import numpy as np
 
 random.seed(42)
 
@@ -21,20 +17,20 @@ def load_yolo_bboxes(label_path):
     bboxes = []
     if not label_path.exists():
         return bboxes
-    
+
     with open(label_path, 'r') as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
-            
+
             parts = line.split()
             if len(parts) < 5:
                 continue
-            
+
             cls = int(parts[0])
             coords = [float(x) for x in parts[1:]]
-            
+
             if len(coords) == 4:
                 cx, cy, w, h = coords
                 bboxes.append([cls, cx, cy, w, h])
@@ -48,7 +44,7 @@ def load_yolo_bboxes(label_path):
                 w = x_max - x_min
                 h = y_max - y_min
                 bboxes.append([cls, cx, cy, w, h])
-    
+
     return bboxes
 
 def save_yolo_bboxes(label_path, bboxes):
@@ -138,17 +134,17 @@ for cn in CLASS_NAMES:
     lbl_files = class_images[cn]
     if not lbl_files:
         continue
-    
+
     should_augment_pct = 1.0 if cn in ['fire_alarm', 'wet_floor_sign'] else 0.6
     n_to_augment = int(len(lbl_files) * should_augment_pct)
-    
+
     all_idxs = list(range(len(lbl_files)))
     random.shuffle(all_idxs)
     idxs_to_augment = set(all_idxs[:n_to_augment])
-    
+
     originals = 0
     augmented = 0
-    
+
     for idx, lbl_file in enumerate(lbl_files):
         img_stem = lbl_file.stem
         img_file = None
@@ -157,38 +153,38 @@ for cn in CLASS_NAMES:
             if candidate.exists():
                 img_file = candidate
                 break
-        
+
         if not img_file:
             continue
-        
+
         bboxes = load_yolo_bboxes(lbl_file)
         if not bboxes:
             continue
-        
+
         if idx in idxs_to_augment:
             originals += 1
             img = cv2.imread(str(img_file))
             if img is None:
                 continue
             h, w = img.shape[:2]
-            
+
             a_boxes, a_classes = yolo_toAlbumentation(bboxes, w, h)
-            
+
             try:
                 augmented_result = augment_transform(image=img, bboxes=a_boxes, class_labels=a_classes)
                 aug_bboxes = albumentation_toYolo(augmented_result['bboxes'], augmented_result['class_labels'], w, h)
-                
+
                 if aug_bboxes:
                     aug_uuid = uuid.uuid4().hex[:8]
                     aug_img_name = f"aug_{cn}_{aug_uuid}{img_file.suffix}"
                     aug_lbl_name = f"aug_{cn}_{aug_uuid}.txt"
-                    
+
                     cv2.imwrite(str(TRAIN_IMG / aug_img_name), augmented_result['image'])
                     save_yolo_bboxes(TRAIN_LBL / aug_lbl_name, aug_bboxes)
                     augmented += 1
             except Exception as e:
                 print(f"    Error: {e}")
-    
+
     all_augmented += augmented
     print(f"  {cn}: {originals} -> {augmented} augmented (of {len(lbl_files)} total)")
 
