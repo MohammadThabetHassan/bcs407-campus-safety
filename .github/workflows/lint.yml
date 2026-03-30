@@ -26,4 +26,10 @@ jobs:
         run: ruff check code/ --select E,F,W --ignore E501
 
       - name: Run ruff format check
-        run: ruff format --check code/ || true
+        run: ruff format --check code/
+
+      - name: Verify Python scripts compile
+        run: python -m py_compile code/setup_v2.py code/augment_v2.py code/inference.py
+
+      - name: Verify training shell script syntax
+        run: bash -n code/train_v2.sh
