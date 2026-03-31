@@ -9,7 +9,7 @@ yolo detect train \
   model=yolov8m.pt \
   epochs=100 \
   imgsz=640 \
-  batch=32 \
+  batch=16 \
   device=0 \
   workers=0 \
   cache=False \

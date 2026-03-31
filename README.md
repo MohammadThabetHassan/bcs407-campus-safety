@@ -42,14 +42,14 @@ The system detects four critical safety objects found in indoor campus environme
 
 | Version | Model | Classes | Split | Epochs | mAP@0.5 | mAP@0.5:0.95 | Notes |
 |---------|-------|---------|-------|--------|---------|--------------|-------|
-| v1 | YOLOv8s | fire_extinguisher, emergency_exit, fire_alarm, wet_floor_sign | ~88/9/3 | 50 | 0.971 | 0.810 | Baseline (old classes) |
+| v1 | YOLOv8s | legacy 4-class baseline (archived) | ~88/9/3 | 50 | 0.971 | 0.810 | Baseline (old model version) |
 | v2 | YOLOv8m | wet_floor_sign, fire_alarm, emergency_exit, safety_helmet | 70/20/10 | 100 | 0.980 (TTA) | 0.818 (TTA) | Final model: `model/weights/best_v2.pt` |
 
 ### v1 Baseline — Per-Class Performance (old classes, for reference)
 
 | Class | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
 |-------|-----------|--------|---------|--------------|
-| fire\_extinguisher *(removed)* | 0.926 | 0.884 | 0.934 | 0.811 |
+| archived class A *(removed in v2)* | 0.926 | 0.884 | 0.934 | 0.811 |
 | emergency\_exit | 0.900 | 0.950 | 0.961 | 0.653 |
 | fire\_alarm | 0.923 | 1.000 | 0.995 | 0.862 |
 | wet\_floor\_sign | 0.991 | 1.000 | 0.995 | 0.915 |
@@ -180,7 +180,7 @@ bash code/train_v2.sh
 ```
 
 This uses the fixed v2 split builder and a stable training config:
-- `batch=32`
+- `batch=16`
 - `workers=0`
 - `cos_lr=True`
 - `lr0=0.01`
@@ -256,7 +256,7 @@ bcs407-campus-safety/
 | Pretrained | COCO (ImageNet backbone) |
 | Epochs | 100 |
 | Image Size | 640×640 |
-| Batch Size | 32 |
+| Batch Size | 16 |
 | Optimizer | AdamW (auto) |
 | LR Schedule | Cosine (lr0=0.01, lrf=0.001) |
 | Warmup Epochs | 5 |
