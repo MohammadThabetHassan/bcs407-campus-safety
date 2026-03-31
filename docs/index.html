@@ -191,6 +191,12 @@
         off640.width = 640; off640.height = 640;
         const ctx640 = off640.getContext('2d', { willReadFrequently: true });
 
+        // Pre-allocated reusable buffers (avoids GC every frame)
+        const buf320 = new Float32Array(3 * 320 * 320);
+        const buf640 = new Float32Array(3 * 640 * 640);
+        let tensor320 = null, tensor640 = null;
+        let feedsLive = {}, feedsImage = {};
+
         // LUT
         const DIV255 = new Float32Array(256);
         for (let i = 0; i < 256; i++) DIV255[i] = i / 255.0;
@@ -263,9 +269,13 @@
                 updateStatus('Loading 320 model...', 'loading');
                 ort.env.wasm.numThreads = navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2;
                 sessionLive = await loadOneModel('./best_v2_320.onnx', '320');
+                tensor320 = new ort.Tensor('float32', buf320, [1, 3, 320, 320]);
+                feedsLive[sessionLive.inputNames[0]] = tensor320;
                 document.getElementById('progressFill').style.width = '50%';
                 updateStatus('Loading 640 model...', 'loading');
                 sessionImage = await loadOneModel('./best_v2.onnx', '640');
+                tensor640 = new ort.Tensor('float32', buf640, [1, 3, 640, 640]);
+                feedsImage[sessionImage.inputNames[0]] = tensor640;
                 document.getElementById('progressFill').style.width = '100%';
                 updateStatus('Both models loaded! Click Start Detection.', 'ready');
                 return true;
@@ -298,7 +308,7 @@
             }
         }
 
-        // ---- Letterbox preprocessing ----
+        // ---- Letterbox preprocessing (optimized — clearRect, reuse buffers) ----
         function letterbox(source, ctx, sz) {
             const srcW = source.videoWidth || source.naturalWidth || source.width;
             const srcH = source.videoHeight || source.naturalHeight || source.height;
@@ -308,25 +318,23 @@
             const padX = (sz - newW) >> 1;
             const padY = (sz - newH) >> 1;
 
-            ctx.fillStyle = '#747474';
-            ctx.fillRect(0, 0, sz, sz);
+            ctx.clearRect(0, 0, sz, sz);
             ctx.drawImage(source, padX, padY, newW, newH);
 
             return { scale, padX, padY, srcW, srcH };
         }
 
-        function preprocess(source, ctx, sz) {
+        function preprocess(source, ctx, sz, buf) {
             const info = letterbox(source, ctx, sz);
             const pixels = ctx.getImageData(0, 0, sz, sz).data;
             const n = sz * sz;
-            const float32 = new Float32Array(3 * n);
             for (let i = 0; i < n; i++) {
                 const j = i * 4;
-                float32[i] = DIV255[pixels[j]];
-                float32[n + i] = DIV255[pixels[j + 1]];
-                float32[2 * n + i] = DIV255[pixels[j + 2]];
+                buf[i] = DIV255[pixels[j]];
+                buf[n + i] = DIV255[pixels[j + 1]];
+                buf[2 * n + i] = DIV255[pixels[j + 2]];
             }
-            return { tensor: new ort.Tensor('float32', float32, [1, 3, sz, sz]), info };
+            return info;
         }
 
         // ---- Postprocessing (no sigmoid — ONNX output is already post-sigmoid) ----
@@ -471,12 +479,10 @@
             }).join('');
         }
 
-        // ---- Shared inference ----
-        async function runInference(source, canvas, sess, ctx, sz, statusEl, resultsEl, smooth) {
+        // ---- Shared inference (uses pre-allocated buffers) ----
+        async function runInference(source, canvas, sess, ctx, sz, buf, feeds, statusEl, resultsEl, smooth) {
             const t0 = performance.now();
-            const { tensor, info } = preprocess(source, ctx, sz);
-            const feeds = {};
-            feeds[sess.inputNames[0]] = tensor;
+            const info = preprocess(source, ctx, sz, buf);
             const results = await sess.run(feeds);
             const output = results[sess.outputNames[0]];
             let dets = postprocess(output, confidenceThreshold, info, sz);
@@ -510,7 +516,7 @@
             try {
                 const { detections, inferMs } = await runInference(
                     video, document.getElementById('canvasOverlay'),
-                    sessionLive, ctx320, 320,
+                    sessionLive, ctx320, 320, buf320, feedsLive,
                     'statusElement', document.getElementById('detectionsContainer'), true
                 );
                 document.getElementById('inferTime').textContent = inferMs;
@@ -616,7 +622,7 @@
                     canvas.height = img.naturalHeight;
                     try {
                         const { detections, inferMs } = await runInference(
-                            img, canvas, sessionImage, ctx640, 640,
+                            img, canvas, sessionImage, ctx640, 640, buf640, feedsImage,
                             'imageStatus', document.getElementById('imageDetections'), false
                         );
                         drawBoxes(canvas, detections);
@@ -657,7 +663,7 @@
                 canvas.height = img.naturalHeight;
                 try {
                     const { detections, inferMs } = await runInference(
-                        img, canvas, sessionImage, ctx640, 640,
+                        img, canvas, sessionImage, ctx640, 640, buf640, feedsImage,
                         'imageStatus', document.getElementById('imageDetections'), false
                     );
                     drawBoxes(canvas, detections);
