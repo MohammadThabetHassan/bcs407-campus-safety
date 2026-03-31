@@ -42,19 +42,38 @@ The system detects four critical safety objects found in indoor campus environme
 
 | Version | Model | Classes | Split | Epochs | mAP@0.5 | mAP@0.5:0.95 | Notes |
 |---------|-------|---------|-------|--------|---------|--------------|-------|
-| v1 | YOLOv8s | fire_extinguisher, emergency_exit, fire_alarm, wet_floor_sign | ~88/9/3 | 50 | 0.971 | 0.810 | Baseline (old classes) |
-| v2 | YOLOv8m | wet_floor_sign, fire_alarm, emergency_exit, safety_helmet | 70/20/10 | 100 | *in progress* | *in progress* | New classes, offline augmentation, cosine LR, TTA eval |
+| v1 | YOLOv8s | legacy 4-class baseline (archived) | ~88/9/3 | 50 | 0.971 | 0.810 | Baseline (old model version) |
+| v2 | YOLOv8m | wet_floor_sign, fire_alarm, emergency_exit, safety_helmet | 70/20/10 | 100 | 0.980 (TTA) | 0.818 (TTA) | Final model: `model/weights/best_v2.pt` |
 
 ### v1 Baseline — Per-Class Performance (old classes, for reference)
 
 | Class | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
 |-------|-----------|--------|---------|--------------|
-| fire\_extinguisher *(removed)* | 0.926 | 0.884 | 0.934 | 0.811 |
+| archived class A *(removed in v2)* | 0.926 | 0.884 | 0.934 | 0.811 |
 | emergency\_exit | 0.900 | 0.950 | 0.961 | 0.653 |
 | fire\_alarm | 0.923 | 1.000 | 0.995 | 0.862 |
 | wet\_floor\_sign | 0.991 | 1.000 | 0.995 | 0.915 |
 
-> v2 results will be added here after training completes.
+### v2 Final — Overall Performance (with TTA)
+
+| Metric | Value |
+|--------|-------|
+| Precision | 0.964 |
+| Recall | 0.967 |
+| mAP@0.5 | 0.980 |
+| mAP@0.5:0.95 | 0.818 |
+| Inference speed | 5.2 ms / image |
+| Training time | 8.712 hours |
+| Hardware | 2× Tesla T4 |
+
+### v2 Final — Per-Class Performance (with TTA)
+
+| Class | Precision | Recall | mAP@0.5 | mAP@0.5:0.95 |
+|-------|-----------|--------|---------|--------------|
+| wet_floor_sign | 0.986 | 0.979 | 0.990 | 0.875 |
+| fire_alarm | 0.971 | 0.973 | 0.984 | 0.858 |
+| emergency_exit | 0.937 | 0.932 | 0.956 | 0.744 |
+| safety_helmet | 0.962 | 0.982 | 0.990 | 0.795 |
 
 ---
 
@@ -116,7 +135,7 @@ make backup DEST=/path/to/backup
 Use the notebook here:
 
 - [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MohammadThabetHassan/bcs407-campus-safety/blob/main/notebooks/colab_train_v2.ipynb)
-- [`notebooks/colab_train_v2.ipynb`](/home/jovyan/bcs407_v2/bcs407-campus-safety/notebooks/colab_train_v2.ipynb)
+- [`notebooks/colab_train_v2.ipynb`](notebooks/colab_train_v2.ipynb)
 
 It is set up to:
 - mount Google Drive
@@ -161,7 +180,7 @@ bash code/train_v2.sh
 ```
 
 This uses the fixed v2 split builder and a stable training config:
-- `batch=32`
+- `batch=16`
 - `workers=0`
 - `cos_lr=True`
 - `lr0=0.01`
@@ -185,7 +204,7 @@ python code/backup_run_artifacts.py --dest /path/to/backup
 This copies only:
 - `args.yaml`
 - `results.csv`
-- `weights/best.pt`
+- `weights/best.pt` (or renamed copy such as `best_v2.pt`)
 - `weights/last.pt`
 
 That is enough to inspect the run later and resume from `last.pt` without copying the whole `runs/` folder.
@@ -199,7 +218,7 @@ bcs407-campus-safety/
 ├── model/
 │   └── weights/
 │       ├── best.pt           ← v1 trained model (YOLOv8s, 22.5 MB)
-│       └── best_v2.pt        ← v2 trained model (YOLOv8m) [coming soon]
+│       └── best_v2.pt        ← v2 trained model (YOLOv8m, ~52 MB)
 ├── dataset/
 │   └── data.yaml             ← dataset config (v2 classes)
 ├── code/
@@ -237,12 +256,12 @@ bcs407-campus-safety/
 | Pretrained | COCO (ImageNet backbone) |
 | Epochs | 100 |
 | Image Size | 640×640 |
-| Batch Size | 32 |
+| Batch Size | 16 |
 | Optimizer | AdamW (auto) |
 | LR Schedule | Cosine (lr0=0.01, lrf=0.001) |
 | Warmup Epochs | 5 |
 | Augmentations | HSV, flip, mosaic, mixup, copy-paste + offline albumentations |
-| GPU | NVIDIA L4 (23GB) |
+| GPU | 2× Tesla T4 |
 | DataLoader Workers | 0 (safe default for low-shm environments) |
 
 ## Notes
@@ -276,5 +295,13 @@ Uses your webcam to detect safety objects in real time via the browser.
 - **CLO-5:** Technical report and presentation demonstrating team collaboration and communication
 
 ---
+
+## ✅ v2 Model Artifacts Included
+
+- Trained weights: `model/weights/best_v2.pt` (~52 MB)
+- Training curve log: `results/results_v2.csv` (100 epochs)
+- Training/evaluation figures: `results/plots/`
+
+Use `make verify` to run a local workflow sanity check against `best_v2.pt`.
 
 *BCS407 – Artificial Intelligence | Canadian University Dubai | 2026*
