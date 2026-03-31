@@ -2,7 +2,7 @@
 
 All notable changes to the BCS407 Campus Safety Detection project.
 
-## [2.0.0] — 2026-03 (in progress)
+## [2.0.0] — 2026-03-31
 
 ### Changed
 - **Model upgrade**: YOLOv8s (v1) → YOLOv8m (v2)
@@ -23,6 +23,12 @@ All notable changes to the BCS407 Campus Safety Detection project.
 - `LICENSE` — MIT license
 - `CHANGELOG.md` — this file
 - Model info card on live demo page
+
+### Verified
+- Final v2 metrics recorded in README: Precision 0.964, Recall 0.967, mAP@0.5 0.980 (TTA), mAP@0.5:0.95 0.818 (TTA)
+- Final v2 per-class metrics documented for all 4 classes
+- `code/inference.py` default weights switched to `model/weights/best_v2.pt`
+- `make verify` target added for end-to-end local sanity checks using `best_v2.pt`
 
 ### Fixed
 - Class order in `docs/index.html` JS array (was mismatched with `data.yaml`)
