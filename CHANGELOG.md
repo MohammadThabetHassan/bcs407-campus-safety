@@ -23,6 +23,12 @@ All notable changes to the BCS407 Campus Safety Detection project.
 - `LICENSE` — MIT license
 - `CHANGELOG.md` — this file
 - Model info card on live demo page
+- `docs/best_v2.onnx` — INT8 quantized ONNX model (26 MB) for browser inference
+- **Real browser inference**: live demo now runs actual YOLOv8 ONNX inference via onnxruntime-web WASM
+- **Image upload mode**: drag-and-drop or click to upload photos for one-shot detection
+- **Detection smoothing**: temporal filtering across 3 frames to reduce flicker
+- **Model download progress bar**: shows percentage while ONNX model downloads
+- **Confidence threshold slider**: adjust detection sensitivity in real time
 
 ### Verified
 - Final v2 metrics recorded in README: Precision 0.964, Recall 0.967, mAP@0.5 0.980 (TTA), mAP@0.5:0.95 0.818 (TTA)

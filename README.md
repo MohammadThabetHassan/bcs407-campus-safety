@@ -276,7 +276,20 @@ bcs407-campus-safety/
 
 👉 [https://mohammadthabethassan.github.io/bcs407-campus-safety/](https://mohammadthabethassan.github.io/bcs407-campus-safety/)
 
-Uses your webcam to detect safety objects in real time via the browser.
+The demo runs **real YOLOv8 inference entirely in the browser** — no server, no API calls.
+
+**How it works:**
+- The trained `best_v2.pt` model was exported to ONNX and INT8-quantized (26 MB)
+- [ONNX Runtime Web](https://onnxruntime.ai/) loads the model in a WASM backend
+- Each camera frame is preprocessed (resize to 640×640, normalize, CHW layout)
+- The ONNX session runs forward inference, output goes through sigmoid + NMS postprocessing
+- Real bounding boxes are drawn on a canvas overlay
+
+**Two modes:**
+- **Live Camera** — real-time detection from webcam with FPS counter and confidence slider
+- **Upload Image** — drag-and-drop or click to upload a photo for one-shot detection
+
+**Performance:** ~2-5 FPS live (WASM, depends on device). Image mode runs in ~200-500ms per image.
 
 ---
 
