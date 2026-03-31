@@ -6,7 +6,7 @@ All notable changes to the BCS407 Campus Safety Detection project.
 
 ### Changed
 - **Model upgrade**: YOLOv8s (v1) → YOLOv8m (v2)
-- **Class update**: replaced `fire_extinguisher` with `safety_helmet`
+- **Class update**: replaced legacy class with `safety_helmet`
 - **Dataset**: rebuilt with 70/20/10 stratified split (was ~88/9/3)
 - **Training**: 100 epochs with cosine LR schedule (was 50, fixed LR)
 - **Augmentation**: added offline albumentations pipeline (brightness, contrast, HSV, blur, noise, shift/scale/rotate, shadow, H-flip)
@@ -38,14 +38,14 @@ All notable changes to the BCS407 Campus Safety Detection project.
 - `.gitignore`: removed reference to non-existent `merge_campus_safety.py`
 
 ### Removed
-- `fire_extinguisher` class (replaced by `safety_helmet`)
+- legacy class from v1 (replaced by `safety_helmet`)
 - `merge_campus_safety.py` reference (v1 script, not in repo)
 - Unused TensorFlow.js CDN from live demo
 
 ## [1.0.0] — 2026-03-28
 
 ### Initial release
-- YOLOv8s model trained on 4 classes: fire_extinguisher, emergency_exit, fire_alarm, wet_floor_sign
+- YOLOv8s baseline trained on an older 4-class set
 - mAP@0.5 = 0.971, mAP@0.5:0.95 = 0.810
 - 6,079 images, ~88/9/3 split, 50 epochs
 - GitHub Pages live demo with webcam detection
