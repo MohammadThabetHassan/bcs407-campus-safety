@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--weights",
         type=str,
-        default=str(repo_root / "model" / "weights" / "best.pt"),
+        default=str(repo_root / "model" / "weights" / "best_v2.pt"),
         help="Path to the YOLO weights file.",
     )
     parser.add_argument(
