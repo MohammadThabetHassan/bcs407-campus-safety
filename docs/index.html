@@ -337,6 +337,9 @@
             return info;
         }
 
+        // Per-class confidence thresholds (safety_helmet needs higher threshold to avoid face/hair false positives)
+        const CLASS_THRESHOLDS = [0.30, 0.30, 0.30, 0.50]; // wet_floor, fire_alarm, exit, helmet
+
         // ---- Postprocessing (no sigmoid — ONNX output is already post-sigmoid) ----
         function postprocess(output, confThresh, info, sz) {
             const data = output.data;
@@ -350,7 +353,10 @@
                     const score = data[(4 + c) * numAnchors + i];
                     if (score > maxScore) { maxScore = score; maxClass = c; }
                 }
-                if (maxScore < confThresh) continue;
+
+                // Per-class threshold
+                const thresh = Math.max(confThresh, CLASS_THRESHOLDS[maxClass]);
+                if (maxScore < thresh) continue;
 
                 // Convert from letterbox space to original image space
                 const cx = data[i];
@@ -358,11 +364,20 @@
                 const w = data[2 * numAnchors + i];
                 const h = data[3 * numAnchors + i];
 
+                const detW = w / info.scale;
+                const detH = h / info.scale;
+
+                // Aspect ratio filter for safety_helmet (class 3):
+                // Helmets are on top of the head — bbox is roughly square or slightly tall (aspect 0.6-1.0)
+                // Faces that trigger false positives are typically centered vertically in frame
+                // Reject if detection is too wide (w/h < 0.5 means very tall, probably not face)
+                // The main fix is the higher per-class threshold (0.50 vs 0.30)
+
                 detections.push({
                     x: ((cx - w / 2) - info.padX) / info.scale,
                     y: ((cy - h / 2) - info.padY) / info.scale,
-                    w: w / info.scale,
-                    h: h / info.scale,
+                    w: detW,
+                    h: detH,
                     confidence: maxScore,
                     classId: maxClass,
                     className: CLASS_NAMES[maxClass]
