@@ -16,7 +16,6 @@ code/
 report/
 
 # Keep these (important files to track)
-!model/weights/best.pt
 !results/plots/*.png
 !results/plots/*.jpg
 !results/predictions/*.jpg
