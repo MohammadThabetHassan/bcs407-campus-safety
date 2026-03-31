@@ -62,9 +62,9 @@ The system detects four critical safety objects found in indoor campus environme
 | Recall | 0.967 |
 | mAP@0.5 | 0.980 |
 | mAP@0.5:0.95 | 0.818 |
-| Inference speed | 5.2 ms / image |
-| Training time | 8.712 hours |
-| Hardware | 2× Tesla T4 |
+| Inference speed | 5.2 ms / image (GPU, FP32) |
+| Training time | 8.71 hours |
+| Hardware | NVIDIA T4 (Google Colab) |
 
 ### v2 Final — Per-Class Performance (with TTA)
 
@@ -217,7 +217,6 @@ That is enough to inspect the run later and resume from `last.pt` without copyin
 bcs407-campus-safety/
 ├── model/
 │   └── weights/
-│       ├── best.pt           ← v1 trained model (YOLOv8s, 22.5 MB)
 │       └── best_v2.pt        ← v2 trained model (YOLOv8m, ~52 MB)
 ├── dataset/
 │   └── data.yaml             ← dataset config (v2 classes)
