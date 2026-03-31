@@ -290,6 +290,12 @@ The demo runs **real YOLOv8 inference entirely in the browser** — no server, n
 
 **Performance:** ~2-5 FPS live (WASM, depends on device). Image mode runs in ~200-500ms per image.
 
+### Training Results (v2)
+
+![Training Results](results/plots/v2/results.png)
+![Confusion Matrix](results/plots/v2/confusion_matrix.png)
+![F1 Curve](results/plots/v2/BoxF1_curve.png)
+
 ---
 
 ## 🔒 Ethics
