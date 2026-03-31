@@ -278,17 +278,17 @@ bcs407-campus-safety/
 The demo runs **real YOLOv8 inference entirely in the browser** — no server, no API calls.
 
 **How it works:**
-- The trained `best_v2.pt` model was exported to ONNX and INT8-quantized (26 MB)
+- The trained `best_v2.pt` model was exported to ONNX (FP32, 99 MB)
 - [ONNX Runtime Web](https://onnxruntime.ai/) loads the model in a WASM backend
-- Each camera frame is preprocessed (resize to 640×640, normalize, CHW layout)
-- The ONNX session runs forward inference, output goes through sigmoid + NMS postprocessing
-- Real bounding boxes are drawn on a canvas overlay
+- Each camera frame is preprocessed with letterbox (preserves aspect ratio, gray padding)
+- The ONNX session runs forward inference, output is post-processed with NMS
+- Real bounding boxes are drawn on a canvas overlay with position prediction between frames
 
 **Two modes:**
-- **Live Camera** — real-time detection from webcam with FPS counter and confidence slider
-- **Upload Image** — drag-and-drop or click to upload a photo for one-shot detection
+- **Live Camera** — uses 320×320 model (fast, 2100 anchors) with box position prediction for smooth tracking
+- **Upload Image** — uses 640×640 model (accurate, 8400 anchors) for highest quality detection
 
-**Performance:** ~2-5 FPS live (WASM, depends on device). Image mode runs in ~200-500ms per image.
+**Performance:** ~2-6 FPS live (WASM, depends on device). Image mode runs in ~150-400ms per image.
 
 ### Training Results (v2)
 

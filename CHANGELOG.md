@@ -24,11 +24,16 @@ All notable changes to the BCS407 Campus Safety Detection project.
 - `CHANGELOG.md` — this file
 - Model info card on live demo page
 - `docs/best_v2.onnx` — INT8 quantized ONNX model (26 MB) for browser inference
+- `docs/best_v2_320.onnx` — 320x320 ONNX model for fast live inference (2100 anchors)
 - **Real browser inference**: live demo now runs actual YOLOv8 ONNX inference via onnxruntime-web WASM
 - **Image upload mode**: drag-and-drop or click to upload photos for one-shot detection
-- **Detection smoothing**: temporal filtering across 3 frames to reduce flicker
+- **Detection smoothing**: temporal filtering to reduce flicker
 - **Model download progress bar**: shows percentage while ONNX model downloads
 - **Confidence threshold slider**: adjust detection sensitivity in real time
+- **Letterbox preprocessing**: aspect-preserving resize with gray padding (fixes confidence)
+- **Box position prediction**: extrapolates box movement between inference runs for smooth tracking
+- **Dual model architecture**: 320x320 for live mode (fast), 640x640 for image mode (accurate)
+- **Pre-allocated reusable buffers**: eliminates GC pauses per frame (+1-3 FPS)
 
 ### Verified
 - Final v2 metrics recorded in README: Precision 0.964, Recall 0.967, mAP@0.5 0.980 (TTA), mAP@0.5:0.95 0.818 (TTA)
@@ -37,11 +42,15 @@ All notable changes to the BCS407 Campus Safety Detection project.
 - `make verify` target added for end-to-end local sanity checks using `best_v2.pt`
 
 ### Fixed
+- **Double sigmoid bug**: ONNX output already post-sigmoid, demo was applying sigmoid again (compressed 80% to 67%)
 - Class order in `docs/index.html` JS array (was mismatched with `data.yaml`)
 - Broken glob patterns in `augment_v2.py` final stats
 - Hardcoded absolute paths in `setup_v2.py` and `augment_v2.py` (now relative)
 - `inference.py`: added error handling, input validation, `--weights` flag help text
 - `.gitignore`: removed reference to non-existent `merge_campus_safety.py`
+- **Sample image URLs**: 3 of 4 were 404, now point to real GitHub-hosted images
+- **Upload panel**: now resets when switching between Live/Image modes
+- **GC pauses**: pre-allocated Float32Array and ort.Tensor reused every frame
 
 ### Removed
 - legacy class from v1 (replaced by `safety_helmet`)
