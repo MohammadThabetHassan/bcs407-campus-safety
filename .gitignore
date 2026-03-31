@@ -30,3 +30,9 @@ report/
 !code/augment_v2.py
 !code/train_v2.sh
 !dataset/data.yaml
+
+# ── v2 model and results ──
+!model/weights/best_v2.pt
+!results/plots/v2/
+!results/plots/v2/*.png
+!results/results_v2.csv
