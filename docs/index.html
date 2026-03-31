@@ -89,6 +89,7 @@
                         <canvas id="canvasOverlay"></canvas>
                     </div>
                     <div class="stats-bar">FPS: <span id="fpsValue">--</span> | Inference: <span id="inferTime">--</span>ms | Backend: <span id="backendInfo">WASM</span></div>
+                    <div class="stats-bar">Session detections: <span id="totalCount">0</span> | <span id="classCounts"></span></div>
                     <div class="class-legend">
                         <div class="legend-item"><div class="legend-color" style="background:#96ceb4;"></div><span>Wet Floor Sign</span></div>
                         <div class="legend-item"><div class="legend-color" style="background:#45b7d1;"></div><span>Fire Alarm</span></div>
@@ -183,6 +184,8 @@
         let fpsFrames = 0, fpsLastTime = performance.now(), fpsDisplay = 0;
         let confidenceThreshold = 0.25;
         let lastResultsUpdate = 0;
+        let sessionTotal = 0;
+        let sessionClassCounts = {};
 
         // Reusable offscreen canvas for preprocessing (avoid DOM alloc per frame)
         const offscreen = document.createElement('canvas');
@@ -191,8 +194,9 @@
         const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
 
         // Pre-computed lookup tables for speed
+        const INV255 = 1 / 255;
         const DIV255 = new Float32Array(256);
-        for (let i = 0; i < 256; i++) DIV255[i] = i / 255.0;
+        for (let i = 0; i < 256; i++) DIV255[i] = i * INV255;
 
         const SIGMOID_LUT_SIZE = 8192;
         const SIGMOID_LUT_MIN = -16;
@@ -499,6 +503,18 @@
                 }
                 document.getElementById('inferTime').textContent = inferMs;
 
+                // Cumulative detection counter
+                sessionTotal += detections.length;
+                for (const d of detections) {
+                    sessionClassCounts[d.className] = (sessionClassCounts[d.className] || 0) + 1;
+                }
+                document.getElementById('totalCount').textContent = sessionTotal;
+                const countsStr = CLASS_NAMES.map(c => {
+                    const n = sessionClassCounts[c] || 0;
+                    return n > 0 ? `${c.replace(/_/g,' ')}: ${n}` : '';
+                }).filter(Boolean).join(' | ');
+                document.getElementById('classCounts').textContent = countsStr || '—';
+
                 // FPS counter
                 fpsFrames++;
                 const now = performance.now();
@@ -525,6 +541,10 @@
             isDetecting = false;
             inferenceRunning = false;
             boxHistory = [];
+            sessionTotal = 0;
+            sessionClassCounts = {};
+            document.getElementById('totalCount').textContent = '0';
+            document.getElementById('classCounts').textContent = '';
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
             updateStatus('Stopped. Click Start to resume.', 'ready');
