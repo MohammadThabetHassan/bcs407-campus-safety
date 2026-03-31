@@ -106,9 +106,9 @@
                 </div>
                 <div class="results-container">
                     <h3>Detection Results</h3>
+                    <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
                     <div class="status loading" id="statusElement">
                         Loading model...
-                        <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
                     </div>
                     <div class="detections" id="detectionsContainer"><p>No detections yet</p></div>
                 </div>
@@ -226,7 +226,8 @@
                     received += value.length;
                     if (contentLength) {
                         const pct = Math.round(received / contentLength * 100);
-                        document.getElementById('progressFill').style.width = pct + '%';
+                        const fill = document.getElementById('progressFill');
+                        if (fill) fill.style.width = pct + '%';
                         updateStatus(`Downloading model... ${pct}%`, 'loading');
                     }
                 }
