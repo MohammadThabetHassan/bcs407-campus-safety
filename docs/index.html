@@ -141,6 +141,7 @@
                     </div>
                     <div class="controls" id="imageControls" style="display:none;">
                         <button class="secondary" onclick="document.getElementById('fileInput').click()">Upload Another</button>
+                        <button class="secondary" onclick="resetUploadPanel()">Reset</button>
                     </div>
                 </div>
                 <div class="results-container">
@@ -227,6 +228,18 @@
             document.getElementById('panelImage').classList.toggle('active', mode === 'image');
             if (mode === 'live' && isDetecting) { /* keep running */ }
             if (mode === 'image' && isDetecting) { stopDetection(); }
+            if (mode === 'image') { resetUploadPanel(); }
+        }
+
+        function resetUploadPanel() {
+            document.getElementById('uploadZone').style.display = '';
+            document.getElementById('imageResult').style.display = 'none';
+            document.getElementById('imageControls').style.display = 'none';
+            document.getElementById('uploadedImage').src = '';
+            const canvas = document.getElementById('imageCanvas');
+            if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('imageDetections').innerHTML = '<p>No image uploaded</p>';
+            updateStatus('Upload an image to detect objects', 'ready', 'imageStatus');
         }
 
         // ---- Confidence slider ----
@@ -604,10 +617,10 @@
 
         // ---- Sample image loader ----
         const SAMPLE_URLS = {
-            wet_floor: 'https://raw.githubusercontent.com/MohammadThabetHassan/bcs407-campus-safety/main/results/plots/v2/val_batch0_pred.jpg',
-            fire_alarm: 'https://raw.githubusercontent.com/MohammadThabetHassan/bcs407-campus-safety/main/results/plots/v2/val_batch1_pred.jpg',
             emergency_exit: 'https://raw.githubusercontent.com/MohammadThabetHassan/bcs407-campus-safety/main/results/predictions/emergency_exit_004510.jpg',
-            safety_helmet: 'https://raw.githubusercontent.com/MohammadThabetHassan/bcs407-campus-safety/main/results/plots/v2/confusion_matrix_normalized.jpg'
+            fire_alarm: 'https://raw.githubusercontent.com/MohammadThabetHassan/bcs407-campus-safety/main/results/plots/v2/BoxF1_curve.png',
+            wet_floor: 'https://raw.githubusercontent.com/MohammadThabetHassan/bcs407-campus-safety/main/results/plots/v2/confusion_matrix.png',
+            safety_helmet: 'https://raw.githubusercontent.com/MohammadThabetHassan/bcs407-campus-safety/main/results/plots/v2/results.png'
         };
 
         async function loadSample(key) {
