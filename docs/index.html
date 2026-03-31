@@ -71,7 +71,7 @@
     <div class="container">
         <header>
             <h1>BCS407 Campus Safety Detection System</h1>
-            <p class="subtitle">YOLOv8 ONNX inference in browser — real object detection, not simulated</p>
+            <p class="subtitle">YOLOv8 ONNX inference — letterbox preprocessing, position prediction</p>
         </header>
 
         <div class="mode-tabs">
@@ -79,7 +79,6 @@
             <button class="mode-tab" id="tabImage" onclick="switchMode('image')">Upload Image</button>
         </div>
 
-        <!-- ===== LIVE CAMERA MODE ===== -->
         <div class="mode-panel active" id="panelLive">
             <div class="main-content">
                 <div class="video-container">
@@ -88,8 +87,8 @@
                         <video id="videoElement" autoplay playsinline muted></video>
                         <canvas id="canvasOverlay"></canvas>
                     </div>
-                    <div class="stats-bar">FPS: <span id="fpsValue">--</span> | Inference: <span id="inferTime">--</span>ms | Backend: <span id="backendInfo">WASM</span></div>
-                    <div class="stats-bar">Session detections: <span id="totalCount">0</span> | <span id="classCounts"></span></div>
+                    <div class="stats-bar">FPS: <span id="fpsValue">--</span> | Inference: <span id="inferTime">--</span>ms | Model: <span id="modelInfo">320x320</span></div>
+                    <div class="stats-bar">Session: <span id="totalCount">0</span> detections | <span id="classCounts"></span></div>
                     <div class="class-legend">
                         <div class="legend-item"><div class="legend-color" style="background:#96ceb4;"></div><span>Wet Floor Sign</span></div>
                         <div class="legend-item"><div class="legend-color" style="background:#45b7d1;"></div><span>Fire Alarm</span></div>
@@ -97,8 +96,8 @@
                         <div class="legend-item"><div class="legend-color" style="background:#ff6b6b;"></div><span>Safety Helmet</span></div>
                     </div>
                     <div class="slider-row">
-                        <label>Confidence: <strong id="confLabel">25%</strong></label>
-                        <input type="range" id="confSlider" min="10" max="90" value="25">
+                        <label>Confidence: <strong id="confLabel">30%</strong></label>
+                        <input type="range" id="confSlider" min="10" max="90" value="30">
                     </div>
                     <div class="controls">
                         <button id="startButton">Start Detection</button>
@@ -114,7 +113,6 @@
             </div>
         </div>
 
-        <!-- ===== IMAGE UPLOAD MODE ===== -->
         <div class="mode-panel" id="panelImage">
             <div class="main-content">
                 <div class="video-container">
@@ -126,7 +124,7 @@
                     </div>
                     <input type="file" id="fileInput" accept="image/*" style="display:none;">
                     <div style="margin:15px 0;text-align:center;">
-                        <p style="color:#666;font-size:0.9rem;margin-bottom:10px;">Or try a sample image:</p>
+                        <p style="color:#666;font-size:0.9rem;margin-bottom:10px;">Or try a sample:</p>
                         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
                             <button class="secondary" style="padding:8px 16px;font-size:0.85rem;" onclick="loadSample('emergency_exit')">Emergency Exit</button>
                             <button class="secondary" style="padding:8px 16px;font-size:0.85rem;" onclick="loadSample('wet_floor')">Wet Floor Sign</button>
@@ -153,50 +151,55 @@
         <div class="model-info">
             <h3>Model Information</h3>
             <table>
-                <tr><td>Model</td><td>YOLOv8m (v2, ONNX FP32)</td></tr>
+                <tr><td>Model</td><td>YOLOv8m (v2)</td></tr>
                 <tr><td>Classes</td><td>wet_floor_sign, fire_alarm, emergency_exit, safety_helmet</td></tr>
-                <tr><td>Input</td><td>640 x 640</td></tr>
+                <tr><td>Live mode</td><td>320 x 320 ONNX (fast, 2100 anchors)</td></tr>
+                <tr><td>Image mode</td><td>640 x 640 ONNX (accurate, 8400 anchors)</td></tr>
+                <tr><td>Preprocessing</td><td>Letterbox (aspect-preserving, gray padding)</td></tr>
                 <tr><td>mAP@0.5</td><td>0.977</td></tr>
                 <tr><td>mAP@0.5:0.95</td><td>0.794</td></tr>
-                <tr><td>Precision / Recall</td><td>0.964 / 0.967</td></tr>
-                <tr><td>Inference</td><td>ONNX Runtime Web (WASM backend)</td></tr>
+                <tr><td>Inference</td><td>ONNX Runtime Web (WASM)</td></tr>
             </table>
         </div>
 
         <div class="footer">
             <p>BCS407 — Artificial Intelligence | Canadian University Dubai | 2026</p>
-            <p>Detects: Wet Floor Signs, Fire Alarms, Emergency Exits, Safety Helmets</p>
         </div>
     </div>
 
     <script>
-        const MODEL_SIZE = 640;
         const CLASS_NAMES = ['wet_floor_sign', 'fire_alarm', 'emergency_exit', 'safety_helmet'];
         const COLORS = { wet_floor_sign: '#96ceb4', fire_alarm: '#45b7d1', emergency_exit: '#4ecdc4', safety_helmet: '#ff6b6b' };
 
-        let session = null;
+        let sessionLive = null, sessionImage = null;
         let videoStream = null;
         let isDetecting = false;
         let fpsFrames = 0, fpsLastTime = performance.now(), fpsDisplay = 0;
-        let confidenceThreshold = 0.25;
+        let confidenceThreshold = 0.30;
         let lastResultsUpdate = 0;
         let sessionTotal = 0;
         let sessionClassCounts = {};
 
-        // Reusable offscreen canvas
-        const offscreen = document.createElement('canvas');
-        offscreen.width = MODEL_SIZE;
-        offscreen.height = MODEL_SIZE;
-        const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
+        // Live mode canvas (320x320 model)
+        const off320 = document.createElement('canvas');
+        off320.width = 320; off320.height = 320;
+        const ctx320 = off320.getContext('2d', { willReadFrequently: true });
 
-        // Pre-computed LUT for pixel normalization
-        const INV255 = 1 / 255;
+        // Image mode canvas (640x640 model)
+        const off640 = document.createElement('canvas');
+        off640.width = 640; off640.height = 640;
+        const ctx640 = off640.getContext('2d', { willReadFrequently: true });
+
+        // LUT
         const DIV255 = new Float32Array(256);
-        for (let i = 0; i < 256; i++) DIV255[i] = i * INV255;
+        for (let i = 0; i < 256; i++) DIV255[i] = i / 255.0;
 
-        // Detection smoothing
-        const SMOOTH_WINDOW = 3;
-        let boxHistory = [];
+        // Smoothing (reduced to 1 frame)
+        let lastDetections = [];
+
+        // Box prediction state (for smooth movement between inference runs)
+        let predictedDetections = [];
+        let predictionVelocity = [];
 
         // ---- UI ----
         function updateStatus(msg, type, elId) {
@@ -231,42 +234,39 @@
         });
 
         // ---- Model loading ----
+        async function loadOneModel(url, label) {
+            const response = await fetch(url);
+            const contentLength = +response.headers.get('Content-Length');
+            const reader = response.body.getReader();
+            let received = 0;
+            const chunks = [];
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                received += value.length;
+                if (contentLength) {
+                    const pct = Math.round(received / contentLength * 50); // 50% each
+                    const fill = document.getElementById('progressFill');
+                    if (fill) fill.style.width = pct + '%';
+                }
+            }
+            const modelData = new Uint8Array(received);
+            let offset = 0;
+            for (const chunk of chunks) { modelData.set(chunk, offset); offset += chunk.length; }
+            return await ort.InferenceSession.create(modelData, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+        }
+
         async function loadModel() {
             try {
-                updateStatus('Downloading model (99 MB)...', 'loading');
+                updateStatus('Loading 320 model...', 'loading');
                 ort.env.wasm.numThreads = navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2;
-
-                const response = await fetch('./best_v2.onnx');
-                const contentLength = +response.headers.get('Content-Length');
-                const reader = response.body.getReader();
-                let received = 0;
-                const chunks = [];
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    chunks.push(value);
-                    received += value.length;
-                    if (contentLength) {
-                        const pct = Math.round(received / contentLength * 100);
-                        const fill = document.getElementById('progressFill');
-                        if (fill) fill.style.width = pct + '%';
-                        updateStatus('Downloading model... ' + pct + '%', 'loading');
-                    }
-                }
-
-                const modelData = new Uint8Array(received);
-                let offset = 0;
-                for (const chunk of chunks) { modelData.set(chunk, offset); offset += chunk.length; }
-
-                updateStatus('Initializing model...', 'loading');
-                session = await ort.InferenceSession.create(modelData, {
-                    executionProviders: ['wasm'],
-                    graphOptimizationLevel: 'all'
-                });
-
-                updateStatus('Model loaded! Click Start Detection.', 'ready');
-                document.getElementById('backendInfo').textContent = 'WASM (' + ort.env.wasm.numThreads + ' threads)';
+                sessionLive = await loadOneModel('./best_v2_320.onnx', '320');
+                document.getElementById('progressFill').style.width = '50%';
+                updateStatus('Loading 640 model...', 'loading');
+                sessionImage = await loadOneModel('./best_v2.onnx', '640');
+                document.getElementById('progressFill').style.width = '100%';
+                updateStatus('Both models loaded! Click Start Detection.', 'ready');
                 return true;
             } catch (e) {
                 console.error('Model load error:', e);
@@ -292,49 +292,68 @@
                 updateStatus('Camera ready! Click Start Detection.', 'ready');
                 return true;
             } catch (e) {
-                console.error('Camera error:', e);
                 updateStatus('Camera access failed: ' + e.message, 'error');
                 return false;
             }
         }
 
-        // ---- Preprocessing (single loop, LUT normalization) ----
-        function preprocess(source) {
-            offCtx.drawImage(source, 0, 0, MODEL_SIZE, MODEL_SIZE);
-            const pixels = offCtx.getImageData(0, 0, MODEL_SIZE, MODEL_SIZE).data;
-            const n = MODEL_SIZE * MODEL_SIZE;
+        // ---- Letterbox preprocessing ----
+        function letterbox(source, ctx, sz) {
+            const srcW = source.videoWidth || source.naturalWidth || source.width;
+            const srcH = source.videoHeight || source.naturalHeight || source.height;
+            const scale = sz / Math.max(srcW, srcH);
+            const newW = Math.round(srcW * scale);
+            const newH = Math.round(srcH * scale);
+            const padX = (sz - newW) >> 1;
+            const padY = (sz - newH) >> 1;
+
+            ctx.fillStyle = '#747474';
+            ctx.fillRect(0, 0, sz, sz);
+            ctx.drawImage(source, padX, padY, newW, newH);
+
+            return { scale, padX, padY, srcW, srcH };
+        }
+
+        function preprocess(source, ctx, sz) {
+            const info = letterbox(source, ctx, sz);
+            const pixels = ctx.getImageData(0, 0, sz, sz).data;
+            const n = sz * sz;
             const float32 = new Float32Array(3 * n);
             for (let i = 0; i < n; i++) {
                 const j = i * 4;
-                float32[i] = DIV255[pixels[j]];         // R
-                float32[n + i] = DIV255[pixels[j + 1]]; // G
-                float32[2 * n + i] = DIV255[pixels[j + 2]]; // B
+                float32[i] = DIV255[pixels[j]];
+                float32[n + i] = DIV255[pixels[j + 1]];
+                float32[2 * n + i] = DIV255[pixels[j + 2]];
             }
-            return new ort.Tensor('float32', float32, [1, 3, MODEL_SIZE, MODEL_SIZE]);
+            return { tensor: new ort.Tensor('float32', float32, [1, 3, sz, sz]), info };
         }
 
-        // ---- Postprocessing (NO sigmoid — ONNX output is already post-sigmoid) ----
-        function postprocess(output, confThresh, origW, origH) {
+        // ---- Postprocessing (no sigmoid — ONNX output is already post-sigmoid) ----
+        function postprocess(output, confThresh, info, sz) {
             const data = output.data;
             const numAnchors = output.dims[2];
             const numClasses = output.dims[1] - 4;
             const detections = [];
-            const sx = origW / MODEL_SIZE;
-            const sy = origH / MODEL_SIZE;
 
             for (let i = 0; i < numAnchors; i++) {
                 let maxScore = 0, maxClass = 0;
                 for (let c = 0; c < numClasses; c++) {
-                    const score = data[(4 + c) * numAnchors + i]; // already sigmoided in ONNX
+                    const score = data[(4 + c) * numAnchors + i];
                     if (score > maxScore) { maxScore = score; maxClass = c; }
                 }
                 if (maxScore < confThresh) continue;
 
+                // Convert from letterbox space to original image space
+                const cx = data[i];
+                const cy = data[numAnchors + i];
+                const w = data[2 * numAnchors + i];
+                const h = data[3 * numAnchors + i];
+
                 detections.push({
-                    x: (data[i] - data[2 * numAnchors + i] / 2) * sx,
-                    y: (data[numAnchors + i] - data[3 * numAnchors + i] / 2) * sy,
-                    w: data[2 * numAnchors + i] * sx,
-                    h: data[3 * numAnchors + i] * sy,
+                    x: ((cx - w / 2) - info.padX) / info.scale,
+                    y: ((cy - h / 2) - info.padY) / info.scale,
+                    w: w / info.scale,
+                    h: h / info.scale,
                     confidence: maxScore,
                     classId: maxClass,
                     className: CLASS_NAMES[maxClass]
@@ -342,7 +361,7 @@
             }
 
             detections.sort((a, b) => b.confidence - a.confidence);
-            return nms(detections, 0.45);
+            return nms(detections, 0.40);
         }
 
         function nms(dets, thresh) {
@@ -366,20 +385,59 @@
             return inter > 0 ? inter / (a.w * a.h + b.w * b.h - inter) : 0;
         }
 
-        // ---- Detection smoothing ----
+        // ---- Smoothing (1-frame window) ----
         function smoothDetections(dets) {
-            boxHistory.push(dets);
-            if (boxHistory.length > SMOOTH_WINDOW) boxHistory.shift();
-            if (boxHistory.length === 1) return dets;
-            const latest = boxHistory[boxHistory.length - 1];
-            return latest.filter(box => {
-                let matchCount = 0;
-                for (let f = 0; f < boxHistory.length - 1; f++) {
-                    for (const prev of boxHistory[f]) {
-                        if (prev.className === box.className && iou(box, prev) > 0.3) { matchCount++; break; }
-                    }
+            if (lastDetections.length === 0) { lastDetections = dets; return dets; }
+            const prev = lastDetections;
+            lastDetections = dets;
+            // Keep if matched with previous frame or high confidence
+            return dets.filter(box => {
+                for (const p of prev) {
+                    if (p.className === box.className && iou(box, p) > 0.2) return true;
                 }
-                return matchCount >= 1 || box.confidence > 0.7;
+                return box.confidence > 0.8;
+            });
+        }
+
+        // ---- Box position prediction between inference runs ----
+        function computeVelocity(newDets) {
+            if (predictedDetections.length === 0) {
+                predictedDetections = newDets;
+                predictionVelocity = newDets.map(() => ({ dx: 0, dy: 0 }));
+                return;
+            }
+            const newVel = [];
+            for (const det of newDets) {
+                let bestIou = 0, bestPrev = null;
+                for (const prev of predictedDetections) {
+                    if (prev.className !== det.className) continue;
+                    const i = iou(det, prev);
+                    if (i > bestIou) { bestIou = i; bestPrev = prev; }
+                }
+                if (bestPrev && bestIou > 0.1) {
+                    newVel.push({
+                        dx: (det.x - bestPrev.x) / 3,  // assume ~3 frames between inferences
+                        dy: (det.y - bestPrev.y) / 3
+                    });
+                } else {
+                    newVel.push({ dx: 0, dy: 0 });
+                }
+            }
+            predictionVelocity = newVel;
+            predictedDetections = newDets;
+        }
+
+        function extrapolateBoxes() {
+            return predictedDetections.map((det, i) => {
+                const vel = predictionVelocity[i] || { dx: 0, dy: 0 };
+                return {
+                    x: det.x + vel.dx,
+                    y: det.y + vel.dy,
+                    w: det.w,
+                    h: det.h,
+                    confidence: det.confidence,
+                    className: det.className
+                };
             });
         }
 
@@ -389,7 +447,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (const det of detections) {
                 const color = COLORS[det.className] || '#fff';
-                const label = det.className.replace(/_/g, ' ') + ' ' + (det.confidence * 100).toFixed(1) + '%';
+                const label = det.className.replace(/_/g, ' ') + ' ' + (det.confidence * 100).toFixed(0) + '%';
                 ctx.strokeStyle = color;
                 ctx.lineWidth = 3;
                 ctx.strokeRect(det.x, det.y, det.w, det.h);
@@ -408,61 +466,76 @@
                 const color = COLORS[d.className] || '#6a11cb';
                 return '<div class="detection-item" style="border-left-color:' + color + ';">' +
                     '<span class="detection-label">' + d.className.replace(/_/g, ' ') + '</span>' +
-                    '<span class="detection-confidence" style="background:' + color + '22;color:' + color + ';">' + (d.confidence * 100).toFixed(1) + '%</span>' +
-                    '</div>';
+                    '<span class="detection-confidence" style="background:' + color + '22;color:' + color + ';">' + (d.confidence * 100).toFixed(1) + '%</span></div>';
             }).join('');
         }
 
-        // ---- Shared inference function ----
-        async function runInference(source, canvas, statusEl, resultsEl) {
+        // ---- Shared inference ----
+        async function runInference(source, canvas, sess, ctx, sz, statusEl, resultsEl, smooth) {
             const t0 = performance.now();
-            const input = preprocess(source);
+            const { tensor, info } = preprocess(source, ctx, sz);
             const feeds = {};
-            feeds[session.inputNames[0]] = input;
-            const results = await session.run(feeds);
-            const output = results[session.outputNames[0]];
-            const origW = source.naturalWidth || source.videoWidth || canvas.width;
-            const origH = source.naturalHeight || source.videoHeight || canvas.height;
-            let detections = postprocess(output, confidenceThreshold, origW, origH);
-            if (source === document.getElementById('videoElement')) {
-                detections = smoothDetections(detections);
-            }
+            feeds[sess.inputNames[0]] = tensor;
+            const results = await sess.run(feeds);
+            const output = results[sess.outputNames[0]];
+            let dets = postprocess(output, confidenceThreshold, info, sz);
+            if (smooth) dets = smoothDetections(dets);
             const inferMs = (performance.now() - t0).toFixed(0);
-            drawBoxes(canvas, detections);
-            updateResults(resultsEl, detections);
-            return { detections, inferMs };
+            return { detections: dets, inferMs, canvas };
         }
 
         // ---- Live detection loop ----
         let inferenceRunning = false;
+        let lastDrawTime = 0;
 
         async function detectLoop() {
-            if (!isDetecting || !session) return;
-            if (inferenceRunning) { requestAnimationFrame(detectLoop); return; }
+            if (!isDetecting || !sessionLive) return;
+
             const video = document.getElementById('videoElement');
             if (video.readyState < 2) { requestAnimationFrame(detectLoop); return; }
+
+            // Draw predicted (extrapolated) boxes every frame for smooth movement
+            if (predictedDetections.length > 0) {
+                const now = performance.now();
+                if (now - lastDrawTime > 16) { // ~60fps drawing
+                    drawBoxes(document.getElementById('canvasOverlay'), extrapolateBoxes());
+                    lastDrawTime = now;
+                }
+            }
+
+            if (inferenceRunning) { requestAnimationFrame(detectLoop); return; }
 
             inferenceRunning = true;
             try {
                 const { detections, inferMs } = await runInference(
-                    video,
-                    document.getElementById('canvasOverlay'),
-                    'statusElement',
-                    document.getElementById('detectionsContainer')
+                    video, document.getElementById('canvasOverlay'),
+                    sessionLive, ctx320, 320,
+                    'statusElement', document.getElementById('detectionsContainer'), true
                 );
                 document.getElementById('inferTime').textContent = inferMs;
 
+                // Update prediction state
+                computeVelocity(detections);
+                drawBoxes(document.getElementById('canvasOverlay'), detections);
+
+                // Update results panel (throttled)
+                const now = performance.now();
+                if (now - lastResultsUpdate > 500) {
+                    updateResults(document.getElementById('detectionsContainer'), detections);
+                    lastResultsUpdate = now;
+                }
+
+                // Cumulative counter
                 sessionTotal += detections.length;
                 for (const d of detections) sessionClassCounts[d.className] = (sessionClassCounts[d.className] || 0) + 1;
                 document.getElementById('totalCount').textContent = sessionTotal;
-                const countsStr = CLASS_NAMES.map(c => {
+                document.getElementById('classCounts').textContent = CLASS_NAMES.map(c => {
                     const n = sessionClassCounts[c] || 0;
                     return n > 0 ? c.replace(/_/g, ' ') + ': ' + n : '';
-                }).filter(Boolean).join(' | ');
-                document.getElementById('classCounts').textContent = countsStr || '—';
+                }).filter(Boolean).join(' | ') || '—';
 
+                // FPS
                 fpsFrames++;
-                const now = performance.now();
                 if (now - fpsLastTime >= 1000) {
                     fpsDisplay = Math.round(fpsFrames * 1000 / (now - fpsLastTime));
                     fpsFrames = 0;
@@ -482,7 +555,9 @@
         function stopDetection() {
             isDetecting = false;
             inferenceRunning = false;
-            boxHistory = [];
+            lastDetections = [];
+            predictedDetections = [];
+            predictionVelocity = [];
             sessionTotal = 0;
             sessionClassCounts = {};
             document.getElementById('totalCount').textContent = '0';
@@ -497,36 +572,34 @@
         }
 
         document.getElementById('startButton').addEventListener('click', () => {
-            if (!session) { alert('Model not loaded yet'); return; }
+            if (!sessionLive) { alert('Model not loaded yet'); return; }
             isDetecting = true;
             fpsFrames = 0; fpsLastTime = performance.now();
-            boxHistory = [];
+            lastDetections = [];
+            predictedDetections = [];
             document.getElementById('startButton').disabled = true;
             document.getElementById('stopButton').disabled = false;
-            updateStatus('Detection active...', 'ready');
+            updateStatus('Detection active (320x320)...', 'ready');
             detectLoop();
         });
 
         document.getElementById('stopButton').addEventListener('click', stopDetection);
 
         // ---- Image upload ----
-        const uploadZone = document.getElementById('uploadZone');
-        const fileInput = document.getElementById('fileInput');
-
-        uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-        uploadZone.addEventListener('drop', e => {
+        document.getElementById('uploadZone').addEventListener('dragover', e => { e.preventDefault(); e.target.closest('.upload-zone').classList.add('dragover'); });
+        document.getElementById('uploadZone').addEventListener('dragleave', e => e.target.closest('.upload-zone').classList.remove('dragover'));
+        document.getElementById('uploadZone').addEventListener('drop', e => {
             e.preventDefault();
-            uploadZone.classList.remove('dragover');
+            e.target.closest('.upload-zone').classList.remove('dragover');
             if (e.dataTransfer.files.length) processImage(e.dataTransfer.files[0]);
         });
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length) processImage(fileInput.files[0]);
+        document.getElementById('fileInput').addEventListener('change', function() {
+            if (this.files.length) processImage(this.files[0]);
         });
 
         async function processImage(file) {
-            if (!session) { alert('Model not loaded yet'); return; }
-            updateStatus('Processing image...', 'loading', 'imageStatus');
+            if (!sessionImage) { alert('Models not loaded yet'); return; }
+            updateStatus('Processing image (640x640)...', 'loading', 'imageStatus');
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const img = new Image();
@@ -542,15 +615,13 @@
                     canvas.height = img.naturalHeight;
                     try {
                         const { detections, inferMs } = await runInference(
-                            img, canvas, 'imageStatus', document.getElementById('imageDetections')
+                            img, canvas, sessionImage, ctx640, 640,
+                            'imageStatus', document.getElementById('imageDetections'), false
                         );
-                        const msg = detections.length === 0
-                            ? 'No objects detected (' + inferMs + 'ms)'
-                            : detections.length + ' detection(s) found in ' + inferMs + 'ms';
-                        updateStatus(msg, 'ready', 'imageStatus');
-                    } catch (err) {
-                        updateStatus('Error: ' + err.message, 'error', 'imageStatus');
-                    }
+                        drawBoxes(canvas, detections);
+                        updateResults(document.getElementById('imageDetections'), detections);
+                        updateStatus(detections.length + ' detection(s) in ' + inferMs + 'ms', 'ready', 'imageStatus');
+                    } catch (err) { updateStatus('Error: ' + err.message, 'error', 'imageStatus'); }
                 };
                 img.src = e.target.result;
             };
@@ -565,12 +636,11 @@
         };
 
         async function loadSample(key) {
-            if (!session) { alert('Model not loaded yet'); return; }
+            if (!sessionImage) { alert('Models not loaded yet'); return; }
             const url = SAMPLE_URLS[key];
             if (!url) return;
             updateStatus('Loading sample...', 'loading', 'imageStatus');
             switchMode('image');
-
             const img = new Image();
             img.crossOrigin = 'anonymous';
             img.onload = async () => {
@@ -585,17 +655,15 @@
                 canvas.height = img.naturalHeight;
                 try {
                     const { detections, inferMs } = await runInference(
-                        img, canvas, 'imageStatus', document.getElementById('imageDetections')
+                        img, canvas, sessionImage, ctx640, 640,
+                        'imageStatus', document.getElementById('imageDetections'), false
                     );
-                    const msg = detections.length === 0
-                        ? 'No objects detected (' + inferMs + 'ms) — try adjusting confidence'
-                        : detections.length + ' detection(s) found in ' + inferMs + 'ms';
-                    updateStatus(msg, 'ready', 'imageStatus');
-                } catch (err) {
-                    updateStatus('Error: ' + err.message, 'error', 'imageStatus');
-                }
+                    drawBoxes(canvas, detections);
+                    updateResults(document.getElementById('imageDetections'), detections);
+                    updateStatus(detections.length + ' detection(s) in ' + inferMs + 'ms', 'ready', 'imageStatus');
+                } catch (err) { updateStatus('Error: ' + err.message, 'error', 'imageStatus'); }
             };
-            img.onerror = () => updateStatus('Failed to load sample image', 'error', 'imageStatus');
+            img.onerror = () => updateStatus('Failed to load sample', 'error', 'imageStatus');
             img.src = url;
         }
 
@@ -604,7 +672,7 @@
             const ok = await loadModel();
             if (ok) {
                 const vid = await startVideo();
-                if (!vid) updateStatus('Model loaded. Camera failed — check permissions or use Upload Image mode.', 'error');
+                if (!vid) updateStatus('Models loaded. Camera failed — use Upload Image mode.', 'error');
             }
         })();
 
