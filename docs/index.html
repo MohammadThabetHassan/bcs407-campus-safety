@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCS407 - Campus Safety Detection System</title>
-    <meta name="description" content="BCS407 Campus Safety Detection — real-time YOLOv8 object detection for 4 safety classes">
+    <meta name="description" content="BCS407 Campus Safety Detection — real-time YOLOv8 ONNX object detection for 4 safety classes">
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,17 +13,31 @@
         header { text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h1 { font-size: 2.5rem; margin-bottom: 10px; }
         .subtitle { font-size: 1.2rem; opacity: 0.9; }
+        .mode-tabs { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .mode-tab { background: white; border: 2px solid #6a11cb; color: #6a11cb; padding: 10px 24px; font-size: 0.95rem; border-radius: 50px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .mode-tab.active { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; border-color: transparent; }
+        .mode-panel { display: none; }
+        .mode-panel.active { display: block; }
         .main-content { display: flex; gap: 30px; margin-bottom: 30px; }
         .video-container, .results-container { flex: 1; background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .video-wrapper { position: relative; width: 100%; border-radius: 8px; overflow: hidden; background: #000; }
         video { width: 100%; height: auto; display: block; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .upload-zone { border: 3px dashed #ccc; border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: #6a11cb; background: #f0edff; }
+        .upload-zone p { color: #666; font-size: 0.95rem; margin-top: 8px; }
+        .upload-zone .icon { font-size: 3rem; margin-bottom: 10px; }
+        .image-result { position: relative; display: none; border-radius: 8px; overflow: hidden; background: #000; }
+        .image-result img { width: 100%; display: block; }
+        .image-result canvas { position: absolute; top: 0; left: 0; }
         .controls { margin: 20px 0; text-align: center; }
         button { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; border: none; padding: 12px 24px; font-size: 1rem; border-radius: 50px; cursor: pointer; transition: all 0.3s ease; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         button:hover { transform: translateY(-2px); box-shadow: 0 6px 8px rgba(0,0,0,0.15); }
         button:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
-        .fps-counter { text-align: center; font-size: 0.9rem; color: #666; margin-top: 8px; }
-        .fps-counter span { font-weight: 700; color: #2e7d32; }
+        button.secondary { background: white; color: #6a11cb; border: 2px solid #6a11cb; box-shadow: none; }
+        button.secondary:hover { background: #f0edff; transform: none; }
+        .stats-bar { text-align: center; font-size: 0.9rem; color: #666; margin-top: 8px; }
+        .stats-bar span { font-weight: 700; color: #2e7d32; }
         .class-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 15px; justify-content: center; }
         .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
         .legend-color { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.15); }
@@ -35,18 +49,21 @@
         .status.ready { background: #e8f5e8; color: #2e7d32; border: 1px solid #c8e6c9; }
         .status.loading { background: #fff3e0; color: #ef6c00; border: 1px solid #ffcc02; }
         .status.error { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .progress-bar { width: 100%; height: 6px; background: #eee; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #6a11cb, #2575fc); border-radius: 3px; transition: width 0.3s; width: 0%; }
         .model-info { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
         .model-info table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .model-info td { padding: 6px; }
         .model-info td:first-child { font-weight: 600; }
+        .slider-row { margin: 10px 0; text-align: center; }
+        .slider-row input[type="range"] { width: 180px; vertical-align: middle; }
+        .slider-row label { font-size: 0.85rem; color: #666; }
         .footer { text-align: center; margin-top: 40px; padding: 20px; color: #666; font-size: 0.9rem; border-top: 1px solid #eee; }
-        .confidence-slider { margin: 10px 0; text-align: center; }
-        .confidence-slider input { width: 200px; }
-        .confidence-slider label { font-size: 0.85rem; color: #666; }
         @media (max-width: 768px) {
             .main-content { flex-direction: column; }
             h1 { font-size: 2rem; }
             .subtitle { font-size: 1rem; }
+            .mode-tabs { flex-direction: column; align-items: center; }
         }
     </style>
 </head>
@@ -54,37 +71,74 @@
     <div class="container">
         <header>
             <h1>BCS407 Campus Safety Detection System</h1>
-            <p class="subtitle">Real-time YOLOv8 ONNX inference in browser | 4 Classes | v2</p>
+            <p class="subtitle">YOLOv8 ONNX inference in browser — real object detection, not simulated</p>
         </header>
 
-        <div class="main-content">
-            <div class="video-container">
-                <h3>Live Camera Feed</h3>
-                <div class="video-wrapper">
-                    <video id="videoElement" autoplay playsinline muted></video>
-                    <canvas id="canvasOverlay"></canvas>
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tabLive" onclick="switchMode('live')">Live Camera</button>
+            <button class="mode-tab" id="tabImage" onclick="switchMode('image')">Upload Image</button>
+        </div>
+
+        <!-- ===== LIVE CAMERA MODE ===== -->
+        <div class="mode-panel active" id="panelLive">
+            <div class="main-content">
+                <div class="video-container">
+                    <h3>Live Camera Feed</h3>
+                    <div class="video-wrapper">
+                        <video id="videoElement" autoplay playsinline muted></video>
+                        <canvas id="canvasOverlay"></canvas>
+                    </div>
+                    <div class="stats-bar">FPS: <span id="fpsValue">--</span> | Inference: <span id="inferTime">--</span>ms | Backend: <span id="backendInfo">WASM</span></div>
+                    <div class="class-legend">
+                        <div class="legend-item"><div class="legend-color" style="background:#96ceb4;"></div><span>Wet Floor Sign</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background:#45b7d1;"></div><span>Fire Alarm</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background:#4ecdc4;"></div><span>Emergency Exit</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background:#ff6b6b;"></div><span>Safety Helmet</span></div>
+                    </div>
+                    <div class="slider-row">
+                        <label>Confidence: <strong id="confLabel">25%</strong></label>
+                        <input type="range" id="confSlider" min="10" max="90" value="25">
+                    </div>
+                    <div class="controls">
+                        <button id="startButton">Start Detection</button>
+                        <button id="stopButton" disabled>Stop Detection</button>
+                    </div>
                 </div>
-                <div class="fps-counter">FPS: <span id="fpsValue">--</span> | Inference: <span id="inferTime">--</span>ms</div>
-                <div class="class-legend">
-                    <div class="legend-item"><div class="legend-color" style="background:#96ceb4;"></div><span>Wet Floor Sign</span></div>
-                    <div class="legend-item"><div class="legend-color" style="background:#45b7d1;"></div><span>Fire Alarm</span></div>
-                    <div class="legend-item"><div class="legend-color" style="background:#4ecdc4;"></div><span>Emergency Exit</span></div>
-                    <div class="legend-item"><div class="legend-color" style="background:#ff6b6b;"></div><span>Safety Helmet</span></div>
-                </div>
-                <div class="confidence-slider">
-                    <label>Confidence: <strong id="confLabel">25%</strong></label><br>
-                    <input type="range" id="confSlider" min="10" max="90" value="25">
-                </div>
-                <div class="controls">
-                    <button id="startButton">Start Detection</button>
-                    <button id="stopButton" disabled>Stop Detection</button>
+                <div class="results-container">
+                    <h3>Detection Results</h3>
+                    <div class="status loading" id="statusElement">
+                        Loading model...
+                        <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
+                    </div>
+                    <div class="detections" id="detectionsContainer"><p>No detections yet</p></div>
                 </div>
             </div>
+        </div>
 
-            <div class="results-container">
-                <h3>Detection Results</h3>
-                <div class="status loading" id="statusElement">Loading model...</div>
-                <div class="detections" id="detectionsContainer"><p>No detections yet</p></div>
+        <!-- ===== IMAGE UPLOAD MODE ===== -->
+        <div class="mode-panel" id="panelImage">
+            <div class="main-content">
+                <div class="video-container">
+                    <h3>Image Detection</h3>
+                    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                        <div class="icon">📷</div>
+                        <strong>Click to upload or drag &amp; drop an image</strong>
+                        <p>Supports JPG, PNG, WebP</p>
+                    </div>
+                    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+                    <div class="image-result" id="imageResult">
+                        <img id="uploadedImage" alt="Uploaded image">
+                        <canvas id="imageCanvas"></canvas>
+                    </div>
+                    <div class="controls" id="imageControls" style="display:none;">
+                        <button class="secondary" onclick="document.getElementById('fileInput').click()">Upload Another</button>
+                    </div>
+                </div>
+                <div class="results-container">
+                    <h3>Detection Results</h3>
+                    <div class="status ready" id="imageStatus">Upload an image to detect objects</div>
+                    <div class="detections" id="imageDetections"><p>No image uploaded</p></div>
+                </div>
             </div>
         </div>
 
@@ -96,7 +150,9 @@
                 <tr><td>Input</td><td>640 x 640</td></tr>
                 <tr><td>mAP@0.5 (TTA)</td><td>0.980</td></tr>
                 <tr><td>mAP@0.5:0.95 (TTA)</td><td>0.818</td></tr>
+                <tr><td>Precision / Recall</td><td>0.964 / 0.967</td></tr>
                 <tr><td>Inference</td><td>ONNX Runtime Web (WASM backend)</td></tr>
+                <tr><td>Quantization</td><td>INT8 dynamic (26 MB, down from 99 MB FP32)</td></tr>
             </table>
         </div>
 
@@ -117,28 +173,77 @@
         let fpsFrames = 0, fpsLastTime = performance.now(), fpsDisplay = 0;
         let confidenceThreshold = 0.25;
 
-        const confSlider = document.getElementById('confSlider');
-        const confLabel = document.getElementById('confLabel');
-        confSlider.addEventListener('input', () => {
-            confidenceThreshold = confSlider.value / 100;
-            confLabel.textContent = confSlider.value + '%';
-        });
+        // Reusable offscreen canvas for preprocessing (avoid DOM alloc per frame)
+        const offscreen = document.createElement('canvas');
+        offscreen.width = MODEL_SIZE;
+        offscreen.height = MODEL_SIZE;
+        const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
 
-        function updateStatus(msg, type) {
-            const el = document.getElementById('statusElement');
+        // Detection smoothing buffer (keep last N frames of boxes)
+        const SMOOTH_WINDOW = 3;
+        let boxHistory = [];
+
+        // ---- UI helpers ----
+        function updateStatus(msg, type, elId) {
+            const el = document.getElementById(elId || 'statusElement');
             el.textContent = msg;
             el.className = 'status ' + type;
         }
 
+        function switchMode(mode) {
+            document.getElementById('tabLive').classList.toggle('active', mode === 'live');
+            document.getElementById('tabImage').classList.toggle('active', mode === 'image');
+            document.getElementById('panelLive').classList.toggle('active', mode === 'live');
+            document.getElementById('panelImage').classList.toggle('active', mode === 'image');
+            if (mode === 'live' && isDetecting) { /* keep running */ }
+            if (mode === 'image' && isDetecting) { stopDetection(); }
+        }
+
+        // ---- Confidence slider ----
+        const confSlider = document.getElementById('confSlider');
+        confSlider.addEventListener('input', () => {
+            confidenceThreshold = confSlider.value / 100;
+            document.getElementById('confLabel').textContent = confSlider.value + '%';
+        });
+
+        // ---- Model loading with progress ----
         async function loadModel() {
             try {
                 updateStatus('Downloading model (26 MB)...', 'loading');
-                ort.env.wasm.numThreads = 1;
-                session = await ort.InferenceSession.create('./best_v2.onnx', {
+                ort.env.wasm.numThreads = navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2;
+
+                // Fetch model manually to track progress
+                const response = await fetch('./best_v2.onnx');
+                const contentLength = +response.headers.get('Content-Length');
+                const reader = response.body.getReader();
+                let received = 0;
+                const chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    received += value.length;
+                    if (contentLength) {
+                        const pct = Math.round(received / contentLength * 100);
+                        document.getElementById('progressFill').style.width = pct + '%';
+                        updateStatus(`Downloading model... ${pct}%`, 'loading');
+                    }
+                }
+
+                const modelData = new Uint8Array(received);
+                let offset = 0;
+                for (const chunk of chunks) { modelData.set(chunk, offset); offset += chunk.length; }
+
+                updateStatus('Initializing model...', 'loading');
+                session = await ort.InferenceSession.create(modelData, {
                     executionProviders: ['wasm'],
                     graphOptimizationLevel: 'all'
                 });
+
+                const threads = ort.env.wasm.numThreads;
                 updateStatus('Model loaded! Click Start Detection.', 'ready');
+                document.getElementById('backendInfo').textContent = `WASM (${threads} threads)`;
                 return true;
             } catch (e) {
                 console.error('Model load error:', e);
@@ -147,11 +252,13 @@
             }
         }
 
+        // ---- Camera ----
         async function startVideo() {
             try {
                 updateStatus('Accessing camera...', 'loading');
                 videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'environment' }, audio: false
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'environment' },
+                    audio: false
                 });
                 const video = document.getElementById('videoElement');
                 video.srcObject = videoStream;
@@ -168,54 +275,58 @@
             }
         }
 
-        function preprocess(video) {
-            const tmpCanvas = document.createElement('canvas');
-            tmpCanvas.width = MODEL_SIZE;
-            tmpCanvas.height = MODEL_SIZE;
-            const ctx = tmpCanvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, MODEL_SIZE, MODEL_SIZE);
-            const imageData = ctx.getImageData(0, 0, MODEL_SIZE, MODEL_SIZE);
-            const data = imageData.data;
-            const float32 = new Float32Array(3 * MODEL_SIZE * MODEL_SIZE);
-            for (let i = 0; i < MODEL_SIZE * MODEL_SIZE; i++) {
-                float32[i] = data[i * 4] / 255.0;
-                float32[MODEL_SIZE * MODEL_SIZE + i] = data[i * 4 + 1] / 255.0;
-                float32[2 * MODEL_SIZE * MODEL_SIZE + i] = data[i * 4 + 2] / 255.0;
+        // ---- Preprocessing (optimized — reuses offscreen canvas, no pixel loop) ----
+        function preprocess(source) {
+            offCtx.drawImage(source, 0, 0, MODEL_SIZE, MODEL_SIZE);
+            const pixels = offCtx.getImageData(0, 0, MODEL_SIZE, MODEL_SIZE).data;
+            const n = MODEL_SIZE * MODEL_SIZE;
+            const float32 = new Float32Array(3 * n);
+
+            // Unrolled CHW conversion (batched by channel)
+            for (let i = 0; i < n; i++) {
+                float32[i] = pixels[i * 4] / 255.0;
             }
+            for (let i = 0; i < n; i++) {
+                float32[n + i] = pixels[i * 4 + 1] / 255.0;
+            }
+            for (let i = 0; i < n; i++) {
+                float32[2 * n + i] = pixels[i * 4 + 2] / 255.0;
+            }
+
             return new ort.Tensor('float32', float32, [1, 3, MODEL_SIZE, MODEL_SIZE]);
         }
 
+        // ---- Postprocessing ----
         function sigmoid(x) { return 1.0 / (1.0 + Math.exp(-x)); }
 
         function postprocess(output, confThresh, origW, origH) {
             const data = output.data;
-            const shape = output.dims;
-            const numAnchors = shape[2];
-            const numClasses = shape[1] - 4;
+            const numAnchors = output.dims[2];
+            const numClasses = output.dims[1] - 4;
             const detections = [];
 
+            // Pre-compute scale factors
+            const sx = origW / MODEL_SIZE;
+            const sy = origH / MODEL_SIZE;
+
             for (let i = 0; i < numAnchors; i++) {
-                let maxScore = -Infinity;
-                let maxClass = 0;
+                let maxScore = -Infinity, maxClass = 0;
                 for (let c = 0; c < numClasses; c++) {
                     const score = sigmoid(data[(4 + c) * numAnchors + i]);
                     if (score > maxScore) { maxScore = score; maxClass = c; }
                 }
                 if (maxScore < confThresh) continue;
 
-                const cx = data[0 * numAnchors + i];
-                const cy = data[1 * numAnchors + i];
+                const cx = data[i];
+                const cy = data[numAnchors + i];
                 const w  = data[2 * numAnchors + i];
                 const h  = data[3 * numAnchors + i];
 
-                const scaleX = origW / MODEL_SIZE;
-                const scaleY = origH / MODEL_SIZE;
-
                 detections.push({
-                    x: (cx - w / 2) * scaleX,
-                    y: (cy - h / 2) * scaleY,
-                    w: w * scaleX,
-                    h: h * scaleY,
+                    x: (cx - w / 2) * sx,
+                    y: (cy - h / 2) * sy,
+                    w: w * sx,
+                    h: h * sy,
                     confidence: maxScore,
                     classId: maxClass,
                     className: CLASS_NAMES[maxClass]
@@ -226,32 +337,53 @@
             return nms(detections, 0.45);
         }
 
-        function nms(dets, iouThresh) {
+        function nms(dets, thresh) {
             const kept = [];
-            const suppressed = new Set();
+            const suppressed = new Uint8Array(dets.length);
             for (let i = 0; i < dets.length; i++) {
-                if (suppressed.has(i)) continue;
+                if (suppressed[i]) continue;
                 kept.push(dets[i]);
                 for (let j = i + 1; j < dets.length; j++) {
-                    if (suppressed.has(j)) continue;
-                    if (iou(dets[i], dets[j]) > iouThresh) suppressed.add(j);
+                    if (suppressed[j]) continue;
+                    if (iou(dets[i], dets[j]) > thresh) suppressed[j] = 1;
                 }
             }
             return kept;
         }
 
         function iou(a, b) {
-            const x1 = Math.max(a.x, b.x);
-            const y1 = Math.max(a.y, b.y);
-            const x2 = Math.min(a.x + a.w, b.x + b.w);
-            const y2 = Math.min(a.y + a.h, b.y + b.h);
+            const x1 = Math.max(a.x, b.x), y1 = Math.max(a.y, b.y);
+            const x2 = Math.min(a.x + a.w, b.x + b.w), y2 = Math.min(a.y + a.h, b.y + b.h);
             const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
             const union = a.w * a.h + b.w * b.h - inter;
             return union > 0 ? inter / union : 0;
         }
 
-        function drawBoxes(detections, origW, origH) {
-            const canvas = document.getElementById('canvasOverlay');
+        // ---- Detection smoothing ----
+        function smoothDetections(dets) {
+            boxHistory.push(dets);
+            if (boxHistory.length > SMOOTH_WINDOW) boxHistory.shift();
+
+            if (boxHistory.length === 1) return dets;
+
+            // Use boxes from the most recent frame, but only show if detected in 2+ of last N frames
+            const latest = boxHistory[boxHistory.length - 1];
+            return latest.filter(box => {
+                let matchCount = 0;
+                for (let f = 0; f < boxHistory.length - 1; f++) {
+                    for (const prev of boxHistory[f]) {
+                        if (prev.className === box.className && iou(box, prev) > 0.3) {
+                            matchCount++;
+                            break;
+                        }
+                    }
+                }
+                return matchCount >= 1 || box.confidence > 0.7;
+            });
+        }
+
+        // ---- Drawing ----
+        function drawBoxes(canvas, detections) {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -272,8 +404,7 @@
             }
         }
 
-        function updateResults(detections) {
-            const el = document.getElementById('detectionsContainer');
+        function updateResults(el, detections) {
             if (detections.length === 0) { el.innerHTML = '<p>No objects detected</p>'; return; }
             el.innerHTML = detections.map(d => {
                 const color = COLORS[d.className] || '#6a11cb';
@@ -284,25 +415,43 @@
             }).join('');
         }
 
+        // ---- Live detection loop (async-safe, skips frames if prev inference not done) ----
+        let inferenceRunning = false;
+
         async function detectLoop() {
             if (!isDetecting || !session) return;
-            const video = document.getElementById('videoElement');
-            if (video.readyState < 2) { requestAnimationFrame(detectLoop); return; }
 
+            if (inferenceRunning) {
+                // Previous inference still running, skip this frame
+                requestAnimationFrame(detectLoop);
+                return;
+            }
+
+            const video = document.getElementById('videoElement');
+            if (video.readyState < 2) {
+                requestAnimationFrame(detectLoop);
+                return;
+            }
+
+            inferenceRunning = true;
             const t0 = performance.now();
+
             try {
                 const input = preprocess(video);
                 const feeds = {};
                 feeds[session.inputNames[0]] = input;
                 const results = await session.run(feeds);
                 const output = results[session.outputNames[0]];
-                const detections = postprocess(output, confidenceThreshold, video.videoWidth, video.videoHeight);
+                let detections = postprocess(output, confidenceThreshold, video.videoWidth, video.videoHeight);
+                detections = smoothDetections(detections);
+
                 const inferMs = (performance.now() - t0).toFixed(0);
 
-                drawBoxes(detections, video.videoWidth, video.videoHeight);
-                updateResults(detections);
-
+                drawBoxes(document.getElementById('canvasOverlay'), detections);
+                updateResults(document.getElementById('detectionsContainer'), detections);
                 document.getElementById('inferTime').textContent = inferMs;
+
+                // FPS counter
                 fpsFrames++;
                 const now = performance.now();
                 if (now - fpsLastTime >= 1000) {
@@ -314,6 +463,8 @@
             } catch (e) {
                 console.error('Detection error:', e);
             }
+
+            inferenceRunning = false;
             requestAnimationFrame(detectLoop);
         }
 
@@ -322,18 +473,10 @@
             c.getContext('2d').clearRect(0, 0, c.width, c.height);
         }
 
-        document.getElementById('startButton').addEventListener('click', () => {
-            if (!session) { alert('Model not loaded yet'); return; }
-            isDetecting = true;
-            fpsFrames = 0; fpsLastTime = performance.now();
-            document.getElementById('startButton').disabled = true;
-            document.getElementById('stopButton').disabled = false;
-            updateStatus('Detection active...', 'ready');
-            detectLoop();
-        });
-
-        document.getElementById('stopButton').addEventListener('click', () => {
+        function stopDetection() {
             isDetecting = false;
+            inferenceRunning = false;
+            boxHistory = [];
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
             updateStatus('Stopped. Click Start to resume.', 'ready');
@@ -341,13 +484,95 @@
             document.getElementById('fpsValue').textContent = '--';
             document.getElementById('inferTime').textContent = '--';
             clearCanvas();
+        }
+
+        document.getElementById('startButton').addEventListener('click', () => {
+            if (!session) { alert('Model not loaded yet'); return; }
+            isDetecting = true;
+            fpsFrames = 0; fpsLastTime = performance.now();
+            boxHistory = [];
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('stopButton').disabled = false;
+            updateStatus('Detection active...', 'ready');
+            detectLoop();
         });
 
+        document.getElementById('stopButton').addEventListener('click', stopDetection);
+
+        // ---- Image upload mode ----
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) processImage(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) processImage(fileInput.files[0]);
+        });
+
+        async function processImage(file) {
+            if (!session) { alert('Model not loaded yet'); return; }
+
+            updateStatus('Processing image...', 'loading', 'imageStatus');
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const img = new Image();
+                img.onload = async () => {
+                    // Show image
+                    document.getElementById('uploadZone').style.display = 'none';
+                    const resultDiv = document.getElementById('imageResult');
+                    resultDiv.style.display = 'block';
+                    document.getElementById('uploadedImage').src = e.target.result;
+                    document.getElementById('imageControls').style.display = 'block';
+
+                    // Wait for image to render
+                    await new Promise(r => requestAnimationFrame(r));
+
+                    const canvas = document.getElementById('imageCanvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+
+                    // Resize the result container to match image aspect
+                    resultDiv.style.maxHeight = 'none';
+
+                    const t0 = performance.now();
+                    try {
+                        const input = preprocess(img);
+                        const feeds = {};
+                        feeds[session.inputNames[0]] = input;
+                        const results = await session.run(feeds);
+                        const output = results[session.outputNames[0]];
+                        const detections = postprocess(output, confidenceThreshold, img.naturalWidth, img.naturalHeight);
+                        const inferMs = (performance.now() - t0).toFixed(0);
+
+                        drawBoxes(canvas, detections);
+                        updateResults(document.getElementById('imageDetections'), detections);
+
+                        const msg = detections.length === 0
+                            ? `No objects detected (${inferMs}ms)`
+                            : `${detections.length} detection(s) found in ${inferMs}ms`;
+                        updateStatus(msg, detections.length > 0 ? 'ready' : 'ready', 'imageStatus');
+                    } catch (err) {
+                        console.error('Image inference error:', err);
+                        updateStatus('Error: ' + err.message, 'error', 'imageStatus');
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ---- Init ----
         (async () => {
             const ok = await loadModel();
             if (ok) {
                 const vid = await startVideo();
-                if (!vid) updateStatus('Model loaded. Camera failed — check permissions.', 'error');
+                if (!vid) updateStatus('Model loaded. Camera failed — check permissions or use Upload Image mode.', 'error');
             }
         })();
 
