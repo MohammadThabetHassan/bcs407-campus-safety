@@ -338,7 +338,7 @@
         }
 
         // Per-class confidence thresholds (safety_helmet needs higher threshold to avoid face/hair false positives)
-        const CLASS_THRESHOLDS = [0.30, 0.30, 0.30, 0.50]; // wet_floor, fire_alarm, exit, helmet
+        const CLASS_THRESHOLDS = [0.30, 0.30, 0.30, 0.70]; // wet_floor, fire_alarm, exit, helmet
 
         // ---- Postprocessing (no sigmoid — ONNX output is already post-sigmoid) ----
         function postprocess(output, confThresh, info, sz) {
