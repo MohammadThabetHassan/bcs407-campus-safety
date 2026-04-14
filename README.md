@@ -17,6 +17,7 @@
 | Fahad Al Jazzeri | [@fahadALjazzeri](https://github.com/fahadALjazzeri) |
 | Omar Alraas | [@omaralraas](https://github.com/omaralraas) |
 | Obadah Loul | [@obadah-loul](https://github.com/obadah-loul) |
+| Saifeddin Altawarh | [@Saifeddint](https://github.com/Saifeddint) |
 
 ---
 
