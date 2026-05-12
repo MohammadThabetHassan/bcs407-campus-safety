@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
+# Original v2 training script — kept for reproducibility comparison
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+
+echo "=== Original v2 Training (for comparison) ==="
 
 yolo detect train \
   data=dataset/data.yaml \
@@ -18,5 +21,5 @@ yolo detect train \
   lrf=0.001 \
   warmup_epochs=5 \
   project=runs \
-  name=campus_safety_v2_fixed \
+  name=campus_safety_v2_original \
   exist_ok=True
