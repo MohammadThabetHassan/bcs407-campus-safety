@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 BCS407 Campus Safety - Full Kaggle Pipeline
-Run this script on Kaggle (GPU T4, Internet ON) to reproduce all results.
+Run this on Kaggle: GPU T4 x2, Internet ON.
 
-Usage: Upload 4 Roboflow zip files to Kaggle input, then run this script.
+- SOURCE_DIR is read-only (/kaggle/input/) — where zips live
+- WORK_DIR is writable (/kaggle/working/) — where everything runs
 """
 
 import os
@@ -12,24 +13,29 @@ import sys
 from pathlib import Path
 
 # ═══════════════════════════════════════════════════════════════════
-# CONFIGURATION
+# CONFIGURATION — UPDATE SOURCE_DIR IF YOUR KAGGLE PATH DIFFERS
 # ═══════════════════════════════════════════════════════════════════
 
+# Read-only input directory (Kaggle dataset with the 4 zip files)
+SOURCE_DIR = Path("/kaggle/input/datasets/mohdqwe123/bcs407-campus-safety")
+
+# Writable working directory (clone repo + build + train here)
 WORK_DIR = Path("/kaggle/working/bcs407-campus-safety")
+
 REPO_URL = "https://github.com/MohammadThabetHassan/bcs407-campus-safety.git"
+
 ZIP_NAMES = [
-    "wet-floor-detection1.v2i.yolov8.zip",
-    "Fire Alarm.v24i.yolov8 (1).zip",
     "Emergency Exit Signs.v4i.yolov8.zip",
+    "Fire Alarm.v24i.yolov8 (1).zip",
     "Hard Hat Universe.v4i.yolov8.zip",
+    "wet-floor-detection1.v2i.yolov8.zip",
 ]
-TARGET_COUNT = 2500  # Target images per class after balancing
+
+TARGET_COUNT = 2500  # images per class after balancing
 
 
 def header(title):
-    print(f"\n{'='*70}")
-    print(f"  {title}")
-    print(f"{'='*70}\n")
+    print(f"\n{'='*70}\n  {title}\n{'='*70}\n")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -43,54 +49,62 @@ def step_0_install():
 
 
 # ═══════════════════════════════════════════════════════════════════
-# STEP 1: CLONE REPO
+# STEP 1: CLONE REPO INTO WRITABLE WORKING DIRECTORY
 # ═══════════════════════════════════════════════════════════════════
 
-def step_1_clone():
-    header("STEP 1: Clone Repository")
+def step_1_setup_workspace():
+    header("STEP 1: Set Up Working Directory")
+    # Clone repo into writable /kaggle/working/
     if WORK_DIR.exists():
         shutil.rmtree(WORK_DIR)
+    WORK_DIR.mkdir(parents=True, exist_ok=True)
     os.system(f"git clone {REPO_URL} {WORK_DIR}")
     os.chdir(WORK_DIR)
-    print(f"✅ Repo cloned to {WORK_DIR}")
+    print(f"✅ Repo cloned to writable dir: {WORK_DIR}")
 
 
 # ═══════════════════════════════════════════════════════════════════
-# STEP 2: COPY DATASET ZIPS
+# STEP 2: COPY ZIP FILES FROM READ-ONLY INPUT TO WORKING DIR
 # ═══════════════════════════════════════════════════════════════════
 
 def step_2_copy_zips():
-    header("STEP 2: Copy Dataset Zips")
-    # Kaggle datasets are usually in /kaggle/input/
-    input_dir = Path("/kaggle/input")
-    found = 0
+    header("STEP 2: Copy Dataset Zips from Input to Workspace")
 
-    # Check common Kaggle input locations
-    for search_dir in [input_dir, Path("/kaggle/working"), Path("/kaggle/temp")]:
-        if not search_dir.exists():
-            continue
-        for zip_name in ZIP_NAMES:
-            for f in search_dir.rglob(zip_name):
-                dst = WORK_DIR / zip_name
-                if not dst.exists():
-                    shutil.copy2(f, dst)
-                    print(f"  Copied: {zip_name}")
-                    found += 1
+    if not SOURCE_DIR.exists():
+        print(f"  ❌ Source directory not found: {SOURCE_DIR}")
+        print("  Update SOURCE_DIR at the top of this script.")
+        print("  Available directories in /kaggle/input:")
+        inp = Path("/kaggle/input")
+        if inp.exists():
+            for d in inp.iterdir():
+                print(f"    - {d}")
+        sys.exit(1)
+
+    found = 0
+    available_zips = sorted([f.name for f in SOURCE_DIR.rglob("*.zip")])
+    print(f"  Zip files found in source: {available_zips}")
+
+    for zip_name in ZIP_NAMES:
+        src = SOURCE_DIR / zip_name
+        dst = WORK_DIR / zip_name
+        if src.exists():
+            shutil.copy2(str(src), str(dst))
+            print(f"  ✅ Copied: {zip_name}")
+            found += 1
+        else:
+            print(f"  ❌ NOT FOUND: {zip_name}")
+            # Search recursively in case nested
+            for f in SOURCE_DIR.rglob(zip_name):
+                shutil.copy2(str(f), str(dst))
+                print(f"  ✅ Found at {f}, copied")
+                found += 1
                 break
 
-    # Also check if zips are already in repo root
-    for zip_name in ZIP_NAMES:
-        if (WORK_DIR / zip_name).exists():
-            found += 1
-
-    print(f"\n  Found {found}/{len(ZIP_NAMES)} zip files")
-
     if found < len(ZIP_NAMES):
-        print("  ⚠️  Missing zip files! Upload them to Kaggle dataset first:")
-        for z in ZIP_NAMES:
-            if not (WORK_DIR / z).exists():
-                print(f"    - {z}")
+        print(f"\n  ⚠️  Only {found}/{len(ZIP_NAMES)} zips found.")
+        print("  Upload all 4 zip files to your Kaggle dataset.")
         return False
+    print(f"\n  ✅ All {found} zip files copied to workspace")
     return True
 
 
@@ -101,7 +115,7 @@ def step_2_copy_zips():
 def step_3_setup():
     header("STEP 3: Build Dataset from Zips")
     os.system("python code/setup_v2.py")
-    print("✅ Dataset built")
+    print("✅ Dataset built into dataset/")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -113,15 +127,16 @@ def step_4_analyze():
     from code.analyze_distribution import analyze_dataset
     stats = analyze_dataset("dataset")
 
-    # Show imbalance summary
     if "train" in stats:
         counts = [stats["train"]["per_class_images"].get(c, 0) for c in
                   ["wet_floor_sign", "fire_alarm", "emergency_exit", "safety_helmet"]]
-        ratio = max(counts) / min(c for c in counts if c > 0)
-        print(f"\n  ⚠️  Original imbalance ratio: {ratio:.1f}x")
-        print(f"  Target: 1.0x (equalize all to {TARGET_COUNT} images)")
+        non_zero = [c for c in counts if c > 0]
+        if non_zero:
+            ratio = max(counts) / min(non_zero)
+            print(f"\n  ⚠️  Original imbalance ratio: {ratio:.1f}x")
+            print(f"  Target: 1.0x (equalize to {TARGET_COUNT} images per class)")
 
-    print("✅ Analysis complete")
+    print("✅ Analysis complete — see results/plots/")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -146,7 +161,8 @@ def step_6_verify():
     if "train" in stats:
         counts = [stats["train"]["per_class_images"].get(c, 0) for c in
                   ["wet_floor_sign", "fire_alarm", "emergency_exit", "safety_helmet"]]
-        ratio = max(counts) / min(c for c in counts if c > 0) if min(counts) > 0 else 0
+        non_zero = [c for c in counts if c > 0]
+        ratio = max(counts) / min(non_zero) if non_zero else 0
         print(f"\n  ✅ New imbalance ratio: {ratio:.2f}x")
 
         if ratio < 1.1:
@@ -164,17 +180,17 @@ def step_6_verify():
 def step_7_weights():
     header("STEP 7: Compute Inverse-Frequency Class Weights")
     os.system("python code/apply_class_weights.py")
-    print("✅ Class weights computed")
+    print("✅ Class weights computed — dataset/class_weights.yaml")
 
 
 # ═══════════════════════════════════════════════════════════════════
-# STEP 8: EDA (BBOX STATISTICS)
+# STEP 8: BBOX STATISTICS
 # ═══════════════════════════════════════════════════════════════════
 
 def step_8_eda():
-    header("STEP 8: Detailed BBox Statistics (EDA)")
+    header("STEP 8: Detailed BBox Statistics")
     os.system("python code/dataset_analysis.py dataset")
-    print("✅ EDA complete")
+    print("✅ EDA complete — see results/plots/")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -190,10 +206,8 @@ def step_9_train():
     print("    LR0:          0.005")
     print("    Imgsz:        640")
     print("    Warmup:       10 epochs")
-    print("    Data:         9996 images (balanced)")
     print()
 
-    # Check if already trained
     best_pt = WORK_DIR / "runs/detect/campus_safety_v3_balanced/weights/best.pt"
     if best_pt.exists():
         print("  Model already trained! Skipping training.")
@@ -204,7 +218,7 @@ def step_9_train():
         print("✅ Training complete")
         return True
     else:
-        print("❌ Training failed")
+        print("❌ Training failed — check logs above")
         return False
 
 
@@ -218,7 +232,6 @@ def step_10_evaluate():
 
     weights = WORK_DIR / "runs/detect/campus_safety_v3_balanced/weights/best.pt"
     if not weights.exists():
-        # Try v2 as fallback
         weights = WORK_DIR / "model/weights/best_v2.pt"
         if not weights.exists():
             print("  ⚠️  No model weights found, skipping evaluation")
@@ -226,13 +239,12 @@ def step_10_evaluate():
 
     os.system(f"python code/evaluate_model.py --weights {weights} --json-out results/evaluation_results.json")
 
-    # Print summary
     if (WORK_DIR / "results/evaluation_results.json").exists():
         with open(WORK_DIR / "results/evaluation_results.json") as f:
             data = json.load(f)
 
         print("\n" + "=" * 75)
-        print(f"{'Class':<20} {'Precision':>10} {'Recall':>10} {'F1':>10} {'mAP@0.5':>10} {'mAP@0.5:0.95':>12}")
+        print(f"{'Class':<20} {'Prec':>8} {'Recall':>8} {'F1':>8} {'mAP50':>8} {'mAP50-95':>10}")
         print("-" * 75)
         for cls in ["wet_floor_sign", "fire_alarm", "emergency_exit", "safety_helmet"]:
             c = data["per_class"].get(cls, {})
@@ -240,7 +252,7 @@ def step_10_evaluate():
             f1 = 2*p*r/(p+r) if (p+r) > 0 else 0
             m50 = c.get("map50", 0)
             m5095 = c.get("map50_95", 0)
-            print(f"{cls:<20} {p:>10.3f} {r:>10.3f} {f1:>10.3f} {m50:>10.3f} {m5095:>12.3f}")
+            print(f"{cls:<20} {p:>8.3f} {r:>8.3f} {f1:>8.3f} {m50:>8.3f} {m5095:>10.3f}")
         print("=" * 75)
 
     print("✅ Evaluation complete")
@@ -253,12 +265,9 @@ def step_10_evaluate():
 def step_11_figures():
     header("STEP 11: Generate All Report Figures")
 
-    # Use v2 results CSV for training curve comparison
     v2_csv = WORK_DIR / "results/results_v2.csv"
     results_csv = WORK_DIR / "runs/detect/campus_safety_v3_balanced/results.csv"
-
-    # Prefer v3 results, fall back to v2
-    csv_arg = str(results_csv) if results_csv.exists() else str(v2_csv) if v2_csv.exists() else ""
+    csv_arg = str(results_csv) if results_csv.exists() else (str(v2_csv) if v2_csv.exists() else "")
 
     cmd = f"python code/generate_report_plots.py --dataset-stats dataset/dataset_stats.json --bbox-stats dataset/bbox_stats.json --format both --augmentation-dir dataset/train/images --predictions-dir results/predictions"
     if csv_arg:
@@ -269,7 +278,7 @@ def step_11_figures():
         cmd += f" --evaluation-json {eval_json}"
 
     os.system(cmd)
-    print("✅ Report figures generated")
+    print("✅ Report figures generated — see results/plots/")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -295,8 +304,7 @@ def step_12_display():
                 print(f"  📊 {f}")
                 display(Image(filename=str(WORK_DIR / f), width=700))
     except ImportError:
-        print("  IPython not available — skipping display")
-        print("  Check results/plots/ directory for generated figures")
+        print("  Check results/plots/ for generated figures")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -306,57 +314,49 @@ def step_12_display():
 def step_13_summary():
     header("STEP 13: Final Summary")
     print("""
-  ┌─────────────────────────────────────────────────────┐
-  │           BCS407 CAMPUS SAFETY — COMPLETE           │
-  ├─────────────────────────────────────────────────────┤
-  │                                                     │
-  │  Dataset:    9,996 images, 2,500 per class          │
-  │  Imbalance:  10.4x → 1.0x (FIXED ✅)               │
-  │  Model:      YOLOv8m, 150 epochs                    │
-  │  Target:     mAP@0.5 ≥ 0.98, real-time inference    │
-  │                                                     │
-  │  Files created:                                     │
-  │    • code/analyze_distribution.py                   │
-  │    • code/dataset_analysis.py                       │
-  │    • code/augment_v2.py (enhanced)                  │
-  │    • code/train_balanced.sh                         │
-  │    • code/evaluate_model.py                         │
-  │    • code/compute_metrics.py                        │
-  │    • code/apply_class_weights.py                    │
-  │    • code/generate_report_plots.py                  │
-  │    • docs/MOTIVATION.md                             │
-  │    • docs/LITERATURE_REVIEW.md (12 refs)            │
-  │    • docs/METHODOLOGY.md                            │
-  │    • docs/EVALUATION.md                             │
-  │    • docs/DISCUSSION.md (with comparison table)     │
-  │    • docs/ETHICS.md (ACM/IEEE/IST/Canadian)        │
-  │    • docs/TECHNICAL_REPORT.md                       │
-  │    • results/plots/*.png + *.pdf (28+ figures)      │
-  │                                                     │
-  └─────────────────────────────────────────────────────┘
+  ╔═══════════════════════════════════════════════════════════╗
+  │           BCS407 CAMPUS SAFETY — COMPLETE  ✅            │
+  ╠═══════════════════════════════════════════════════════════╣
+  │                                                           │
+  │  Dataset    9,996 images, 2,500 per class                 │
+  │  Imbalance  10.4x → 1.0x (FIXED ✅)                      │
+  │  Model      YOLOv8m, 150 epochs                           │
+  │                                                           │
+  │  Docs:                                                      │
+  │    docs/MOTIVATION.md       Problem framing               │
+  │    docs/LITERATURE_REVIEW.md 12 refs (analytical)         │
+  │    docs/METHODOLOGY.md      Quantitative method           │
+  │    docs/EVALUATION.md       All metrics                   │
+  │    docs/DISCUSSION.md       Comparison table              │
+  │    docs/ETHICS.md           ACM/IEEE/IST frameworks       │
+  │    docs/TECHNICAL_REPORT.md Full academic report          │
+  │                                                           │
+  │  Figures: results/plots/*.png + *.pdf (28+ files)         │
+  │                                                           │
+  ╚═══════════════════════════════════════════════════════════╝
     """)
 
 
 # ═══════════════════════════════════════════════════════════════════
-# MAIN PIPELINE
+# MAIN
 # ═══════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     print("""
-    ╔═══════════════════════════════════════════════════╗
-    ║  BCS407 Campus Safety — Full Kaggle Pipeline     ║
-    ║  13 steps: Install → Clone → Setup → Augment →   ║
-    ║  Train → Evaluate → Generate Reports             ║
-    ╚═══════════════════════════════════════════════════╝
+    ╔══════════════════════════════════════════════════════╗
+    ║   BCS407 Campus Safety — Kaggle Full Pipeline       ║
+    ║   13 steps: Install → Clone → Data → Augment →      ║
+    ║   Train → Evaluate → Report                         ║
+    ╚══════════════════════════════════════════════════════╝
     """)
 
     step_0_install()
-    step_1_clone()
+    step_1_setup_workspace()
 
     if not step_2_copy_zips():
-        print("\n  ⚠️  Cannot continue without dataset zip files.")
-        print("  Upload the 4 Roboflow zip files to your Kaggle dataset first.")
-        print("  See the dataset section in README.md for download links.")
+        print("\n  ❌ Cannot continue without all 4 dataset zip files.")
+        print(f"  Expected at: {SOURCE_DIR}")
+        print("  Upload the zip files to your Kaggle dataset first.")
         sys.exit(1)
 
     step_3_setup()
@@ -371,4 +371,4 @@ if __name__ == "__main__":
     step_12_display()
     step_13_summary()
 
-    print("\n  🎉 PIPELINE COMPLETE — All results in results/plots/\n")
+    print("\n  🎉 PIPELINE COMPLETE\n")
