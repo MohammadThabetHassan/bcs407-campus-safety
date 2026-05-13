@@ -151,9 +151,12 @@ def step_1_clone():
 
      if WORK_DIR.exists():
          shutil.rmtree(str(WORK_DIR))
-     WORK_DIR.mkdir(parents=True, exist_ok=True)
 
-     # Restore saved zips after clone directory is recreated
+     # Clone into fresh WORK_DIR (must be empty/nonexistent for git clone)
+     os.system(f"git clone {REPO_URL} {WORK_DIR} --quiet 2>&1")
+     safe_chdir(WORK_DIR)
+
+     # Restore saved zips after cloning
      for name in saved_zip_names:
          src = tmpdir / name
          dst = WORK_DIR / name
@@ -166,8 +169,6 @@ def step_1_clone():
      # Cleanup temp dir
      shutil.rmtree(str(tmpdir), ignore_errors=True)
 
-     os.system(f"git clone {REPO_URL} {WORK_DIR} --quiet 2>&1")
-     safe_chdir(WORK_DIR)
      print(f"  CWD: {os.getcwd()}")
      if (WORK_DIR / "code" / "setup_v2.py").exists():
          print("✅ Repo cloned")
