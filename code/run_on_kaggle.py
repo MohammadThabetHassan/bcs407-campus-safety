@@ -254,7 +254,7 @@ def step_8_train():
         print("  Already trained! Skipping.")
         return True
 
-    code = os.system("bash code/train_balanced.sh")
+    code = os.system("python code/train_balanced.py")
     return code == 0
 
 

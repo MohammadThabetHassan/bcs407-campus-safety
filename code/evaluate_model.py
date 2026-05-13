@@ -101,29 +101,39 @@ def run_validation(weights_path, data_path, imgsz, batch, iou, conf):
 
 
 def extract_detailed_metrics(results):
-    """Extract per-class and overall metrics from YOLO results object."""
-    # results.boxes contains all predictions
-    # results.speed contains timing info
+    """Extract per-class and overall metrics from YOLO val() results object.
 
+    Ultralytics model.val() returns a DetMetrics object with:
+      results.box.mp       — mean precision
+      results.box.mr       — mean recall
+      results.box.map50    — mAP@0.5
+      results.box.map      — mAP@0.5:0.95
+      results.box.f1       — F1 score (array, first element)
+      results.box.p        — per-class precision array
+      results.box.r        — per-class recall array
+      results.box.ap50     — per-class mAP@0.5 array
+      results.box.ap       — per-class mAP@0.5:0.95 array
+      results.speed        — dict with preprocess/inference/postprocess ms
+    """
     metrics = {
         "overall": {},
         "per_class": {},
         "speed": {},
     }
 
-    # Overall metrics from results
-    if hasattr(results, 'metrics'):
-        m = results.metrics
-        if hasattr(m, 'precision'):
-            metrics["overall"]["precision"] = float(m.precision)
-        if hasattr(m, 'recall'):
-            metrics["overall"]["recall"] = float(m.recall)
-        if hasattr(m, 'map'):
-            metrics["overall"]["map50"] = float(m.map)  # mAP@0.5
-        if hasattr(m, 'map50_95'):
-            metrics["overall"]["map50_95"] = float(m.map50_95)
-        if hasattr(m, 'f1'):
-            metrics["overall"]["f1"] = float(m.f1)
+    # Overall metrics from results.box
+    box = getattr(results, 'box', None)
+    if box is not None:
+        metrics["overall"]["precision"] = float(box.mp)
+        metrics["overall"]["recall"] = float(box.mr)
+        metrics["overall"]["map50"] = float(box.map50)
+        metrics["overall"]["map50_95"] = float(box.map)
+        # F1 may be an array or scalar
+        f1_val = box.f1
+        if hasattr(f1_val, '__len__'):
+            metrics["overall"]["f1"] = float(f1_val[0]) if len(f1_val) > 0 else 0.0
+        else:
+            metrics["overall"]["f1"] = float(f1_val)
 
     # Speed
     if hasattr(results, 'speed'):
@@ -133,24 +143,27 @@ def extract_detailed_metrics(results):
             "postprocess_ms": results.speed.get("postprocess", 0),
         }
 
-    # Per-class metrics
-    try:
-        from ultralytics.utils.metrics import DetMetrics
-        if hasattr(results, 'metrics') and hasattr(results.metrics, 'class_metrics'):
+    # Per-class metrics from results.box arrays
+    if box is not None:
+        try:
+            p_arr = box.p    # per-class precision
+            r_arr = box.r    # per-class recall
+            ap50_arr = box.ap50  # per-class mAP@0.5
+            ap_arr = box.ap  # per-class mAP@0.5:0.95
             for i, cls_name in enumerate(CLASS_NAMES):
-                if i < len(results.metrics.class_metrics):
-                    cm = results.metrics.class_metrics[i]
+                if i < len(p_arr):
+                    p = float(p_arr[i])
+                    r = float(r_arr[i])
+                    f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
                     metrics["per_class"][cls_name] = {
-                        "precision": float(cm.precision) if hasattr(cm, 'precision') else 0,
-                        "recall": float(cm.recall) if hasattr(cm, 'recall') else 0,
-                        "f1": float(cm.f1) if hasattr(cm, 'f1') else 0,
-                        "tp": int(cm.tp) if hasattr(cm, 'tp') else 0,
-                        "fp": int(cm.fp) if hasattr(cm, 'fp') else 0,
-                        "fn": int(cm.fn) if hasattr(cm, 'fn') else 0,
+                        "precision": p,
+                        "recall": r,
+                        "f1": f1,
+                        "map50": float(ap50_arr[i]),
+                        "map50_95": float(ap_arr[i]),
                     }
-    except Exception:
-        print("  [INFO] Could not extract per-class metrics from results object")
-        print("  [INFO] Metrics will be sourced from results.csv instead")
+        except Exception as e:
+            print(f"  [INFO] Could not extract per-class metrics: {e}")
 
     return metrics
 

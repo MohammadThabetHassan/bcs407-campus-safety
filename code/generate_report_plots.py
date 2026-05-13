@@ -264,8 +264,8 @@ def generate_per_class_map(evaluation_json, plt, fmt):
     ax.set_ylabel('mAP Score'); ax.set_title('Mean Average Precision by Class', fontsize=14, fontweight='bold')
     ax.legend(); ax.set_ylim(0, 1.05); _hide_spines(ax)
     for b1i, b2i, v1, v2 in zip(b1, b2, m50, m5095):
-        ax.text(b1i.get_x() + b1i.get_width()/2, b1i.get_height()+0.01, f'{v1:.3f}', ha='center', fontsize=9, fw='bold')
-        ax.text(b2i.get_x() + b2i.get_width()/2, b2i.get_height()+0.01, f'{v2:.3f}', ha='center', fontsize=9, fw='bold')
+        ax.text(b1i.get_x() + b1i.get_width()/2, b1i.get_height()+0.01, f'{v1:.3f}', ha='center', fontsize=9, fontweight='bold')
+        ax.text(b2i.get_x() + b2i.get_width()/2, b2i.get_height()+0.01, f'{v2:.3f}', ha='center', fontsize=9, fontweight='bold')
     plt.tight_layout(); save_fig(fig, '09_per_class_map', plt, fmt)
 
 
@@ -309,7 +309,7 @@ def generate_inference_benchmark(evaluation_json, plt, fmt):
     ax.set_ylabel('Time (ms)'); ax.set_title(f"Inference Speed ({benchmark.get('num_images','?')} images)", fontsize=14, fontweight='bold')
     _hide_spines(ax)
     for bar, val in zip(bars, vals):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height()+0.2, f'{val:.1f} ms', ha='center', fontsize=11, fw='bold')
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height()+0.2, f'{val:.1f} ms', ha='center', fontsize=11, fontweight='bold')
     total_ms = sum(vals); fps = 1000/total_ms if total_ms > 0 else 0
     plt.tight_layout(); save_fig(fig, '11_inference_speed', plt, fmt)
 
