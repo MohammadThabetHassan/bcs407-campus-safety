@@ -81,19 +81,14 @@ def step_0_prepare():
     sources, mode = find_source_dirs()
 
     if mode == "unzipped":
-        print("  📂 Data is already unzipped — linking directories\n")
+        print("  📂 Data is already unzipped — creating zips\n")
 
-        # Clean working dir but keep structure
         WORK_DIR.mkdir(parents=True, exist_ok=True)
 
-        # For unzipped data: we need to convert it into what setup_v2.py expects
-        # i.e., create zip files from the directories
-        zip_dir = WORK_DIR
         for exp_name, src_dir in sources.items():
             zip_name = exp_name
-            zip_path = zip_dir / zip_name
+            zip_path = WORK_DIR / zip_name
 
-            # Create zip from directory
             print(f"  Zipping: {src_dir.name} → {zip_name}.zip")
             with zipfile.ZipFile(str(zip_path) + ".zip", 'w', zipfile.ZIP_DEFLATED) as zf:
                 for root, dirs, files in os.walk(src_dir):
@@ -103,7 +98,6 @@ def step_0_prepare():
                         zf.write(fp, str(arcname))
             print(f"    ✅ Created: {zip_path}.zip")
 
-        # Also copy data.yaml files for reference
         for exp_name, src_dir in sources.items():
             yaml = src_dir / "data.yaml"
             if yaml.exists():
@@ -141,19 +135,45 @@ def safe_chdir(path):
 
 
 def step_1_clone():
-    header("STEP 1: Clone Repository")
-    safe_chdir("/kaggle/working")
-    if WORK_DIR.exists():
-        shutil.rmtree(str(WORK_DIR))
-    WORK_DIR.mkdir(parents=True, exist_ok=True)
-    os.system(f"git clone {REPO_URL} {WORK_DIR} --quiet 2>&1")
-    safe_chdir(WORK_DIR)
-    print(f"  CWD: {os.getcwd()}")
-    if (WORK_DIR / "code" / "setup_v2.py").exists():
-        print("✅ Repo cloned")
-    else:
-        print("❌ Clone failed")
-        sys.exit(1)
+     header("STEP 1: Clone Repository")
+     safe_chdir("/kaggle/working")
+
+     # Save prepared zips to temp location before deleting WORK_DIR
+     # (bug fix: rmtree destroys zips that were created in step_0)
+     import tempfile
+     tmpdir = Path(tempfile.mkdtemp())
+     saved_zip_names = []
+     for zip_path in WORK_DIR.glob("*.zip"):
+         dst = tmpdir / zip_path.name
+         shutil.copy2(str(zip_path), str(dst))
+         saved_zip_names.append(zip_path.name)
+         print(f"  Saved zip to temp: {zip_path.name}")
+
+     if WORK_DIR.exists():
+         shutil.rmtree(str(WORK_DIR))
+     WORK_DIR.mkdir(parents=True, exist_ok=True)
+
+     # Restore saved zips after clone directory is recreated
+     for name in saved_zip_names:
+         src = tmpdir / name
+         dst = WORK_DIR / name
+         if src.exists():
+             shutil.copy2(str(src), str(dst))
+             print(f"  Restored zip: {name}")
+         else:
+             print(f"  Warning: zip not found in temp: {name}")
+
+     # Cleanup temp dir
+     shutil.rmtree(str(tmpdir), ignore_errors=True)
+
+     os.system(f"git clone {REPO_URL} {WORK_DIR} --quiet 2>&1")
+     safe_chdir(WORK_DIR)
+     print(f"  CWD: {os.getcwd()}")
+     if (WORK_DIR / "code" / "setup_v2.py").exists():
+         print("✅ Repo cloned")
+     else:
+         print("❌ Clone failed")
+         sys.exit(1)
 
 
 def step_2_prepare_zips_for_setup():
@@ -185,10 +205,19 @@ def step_3_build():
         print("❌ Dataset build failed")
 
 
+def _import_code_module(module_name):
+    """Import a module from the code/ directory safely."""
+    import importlib
+    code_dir = str(WORK_DIR / "code")
+    if code_dir not in sys.path:
+        sys.path.insert(0, code_dir)
+    return importlib.import_module(module_name)
+
+
 def step_4_analyze():
     header("STEP 4: Analyze Original Distribution")
-    from code.analyze_distribution import analyze_dataset
-    analyze_dataset("dataset")
+    mod = _import_code_module("analyze_distribution")
+    mod.analyze_dataset("dataset")
     print("✅ Analysis complete")
 
 
@@ -199,10 +228,10 @@ def step_5_augment():
 
 
 def step_6_verify():
-    header("STEP 6: Verify Balance")
-    from code.analyze_distribution import analyze_dataset
-    analyze_dataset("dataset")
-    print("\n✅ Balance verified")
+     header("STEP 6: Verify Balance")
+     mod = _import_code_module("analyze_distribution")
+     mod.analyze_dataset("dataset")
+     print("\n✅ Balance verified")
 
 
 def step_7_extra():
