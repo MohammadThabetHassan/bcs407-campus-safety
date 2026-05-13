@@ -247,6 +247,8 @@ def step_8_train():
     print("  Config: batch=16, lr0=0.005, cos_lr, warmup=10, epochs=150")
     print("  ⏱️  ~15-20 hours on Kaggle T4\n")
 
+    os.system("pip install ultralytics -q")
+
     best = WORK_DIR / "runs/detect/campus_safety_v3_balanced/weights/best.pt"
     if best.exists():
         print("  Already trained! Skipping.")
@@ -259,6 +261,7 @@ def step_8_train():
 def step_9_evaluate():
     header("STEP 9: Evaluate Model")
     import json
+    os.system("pip install ultralytics -q")
     w = WORK_DIR / "runs/detect/campus_safety_v3_balanced/weights/best.pt"
     if not w.exists():
         w = WORK_DIR / "model/weights/best_v2.pt"

@@ -4,6 +4,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+echo "=== Installing ultralytics ==="
+pip install ultralytics -q
+
 echo "=== Balanced Training Config (v3) ==="
 echo "Model:       YOLOv8m"
 echo "Epochs:      150 (increased from 100)"
@@ -15,7 +18,7 @@ echo "Imgsz:       640"
 echo "Class balance: equalized to 2500 per class"
 echo ""
 
-yolo detect train \
+python -m ultralytics detect train \
   data=dataset/data.yaml \
   model=yolov8m.pt \
   epochs=150 \
