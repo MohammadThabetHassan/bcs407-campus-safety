@@ -3,253 +3,219 @@
 BCS407 Campus Safety - Full Kaggle Pipeline
 Run on Kaggle: GPU T4 x2, Internet ON.
 
-IMPORTANT: Add your Kaggle dataset (containing the 4 Roboflow zip files)
-to this notebook before running.
-
-Usage:
-  !python code/run_on_kaggle.py
+Handles BOTH:
+  - Dataset as .zip files (needs extraction)
+  - Dataset as already-unzipped directories (just link them)
 """
 
 import os
 import shutil
 import sys
-import subprocess
+import zipfile
 from pathlib import Path
 
 ZIP_NAMES = [
-    "Emergency Exit Signs.v4i.yolov8.zip",
-    "Fire Alarm.v24i.yolov8 (1).zip",
-    "Hard Hat Universe.v4i.yolov8.zip",
-    "wet-floor-detection1.v2i.yolov8.zip",
+    "Emergency Exit Signs.v4i.yolov8",
+    "Fire Alarm.v24i.yolov8 (1)",
+    "Hard Hat Universe.v4i.yolov8",
+    "wet-floor-detection1.v2i.yolov8",
 ]
+ZIP_EXT = ".zip"
 
 TARGET_COUNT = 2500
 REPO_URL = "https://github.com/MohammadThabetHassan/bcs407-campus-safety.git"
 WORK_DIR = Path("/kaggle/working/bcs407-campus-safety")
+INPUT_DIR = Path("/kaggle/input/datasets/mohdqwe123/bcs407-campus-safety")
 
 
 def header(title):
     print(f"\n{'='*70}\n  {title}\n{'='*70}\n")
 
 
-def debug_inventory():
-    """Full diagnostic of what's available on this Kaggle notebook."""
-    print("  🔍 RUNNING FULL INVENTORY...\n")
+def find_source_dirs():
+    """Find whether data is as zips or unzipped dirs in INPUT_DIR."""
+    if not INPUT_DIR.exists():
+        return None, "INPUT_DIR not found"
 
-    # Check /kaggle/input recursively
-    print("  [1] ALL files under /kaggle/input/:")
-    result = subprocess.run(
-        "find /kaggle/input -type f 2>/dev/null | head -50",
-        shell=True, capture_output=True, text=True
-    )
-    if result.stdout.strip():
-        for line in result.stdout.strip().split('\n'):
-            print(f"      {line}")
+    items = sorted(INPUT_DIR.iterdir())
+    dirs = [i for i in items if i.is_dir()]
+    zips = [i for i in items if i.suffix == '.zip']
+
+    print(f"  INPUT_DIR contents: {len(dirs)} dirs, {len(zips)} zips")
+    for d in dirs:
+        print(f"    DIR:  {d.name}/")
+    for z in zips:
+        print(f"    ZIP:  {z.name}")
+
+    # Check for unzipped dataset folders
+    expected_base_names = [z.replace(".zip", "").replace(".zip", "") for z in ZIP_NAMES]
+
+    matched_dirs = {}
+    for exp in ZIP_NAMES:
+        exp_no_zip = exp.replace(".zip", "")
+        for d in dirs:
+            if d.name == exp or d.name == exp_no_zip or exp_no_zip in d.name:
+                matched_dirs[exp] = d
+                break
+
+    if len(matched_dirs) == len(ZIP_NAMES):
+        return matched_dirs, "unzipped"
+
+    # Check for zip files
+    matched_zips = {}
+    for exp in ZIP_NAMES:
+        for z in zips:
+            if z.name == exp or exp in z.name or z.name.replace(".zip","") in exp:
+                matched_zips[exp] = z
+                break
+
+    if matched_zips:
+        return matched_zips, "zips"
+
+    return None, f"Nothing matched. Found: {[d.name for d in dirs] + [z.name for z in zips]}"
+
+
+def step_0_prepare():
+    header("STEP 0: Prepare Dataset Source")
+
+    sources, mode = find_source_dirs()
+
+    if mode == "unzipped":
+        print("  📂 Data is already unzipped — linking directories\n")
+
+        # Clean working dir but keep structure
+        WORK_DIR.mkdir(parents=True, exist_ok=True)
+
+        # For unzipped data: we need to convert it into what setup_v2.py expects
+        # i.e., create zip files from the directories
+        zip_dir = WORK_DIR
+        for exp_name, src_dir in sources.items():
+            zip_name = exp_name
+            zip_path = zip_dir / zip_name
+
+            # Create zip from directory
+            print(f"  Zipping: {src_dir.name} → {zip_name}.zip")
+            with zipfile.ZipFile(str(zip_path) + ".zip", 'w', zipfile.ZIP_DEFLATED) as zf:
+                for root, dirs, files in os.walk(src_dir):
+                    for f in files:
+                        fp = Path(root) / f
+                        arcname = fp.relative_to(src_dir)
+                        zf.write(fp, str(arcname))
+            print(f"    ✅ Created: {zip_path}.zip")
+
+        # Also copy data.yaml files for reference
+        for exp_name, src_dir in sources.items():
+            yaml = src_dir / "data.yaml"
+            if yaml.exists():
+                shutil.copy2(str(yaml), str(WORK_DIR / f"{exp_name}_data.yaml"))
+
+        print("\n  ✅ All directories zipped successfully")
+        return True
+
+    elif mode == "zips":
+        print("  📦 Data is as zip files — copying to workspace\n")
+        WORK_DIR.mkdir(parents=True, exist_ok=True)
+        for exp_name, zip_path in sources.items():
+            dst = WORK_DIR / zip_path.name
+            if not dst.exists():
+                shutil.copy2(str(zip_path), str(dst))
+                print(f"  ✅ Copied: {zip_path.name}")
+        return True
+
     else:
-        print("      (empty or not accessible)")
-
-    # Check all .zip anywhere
-    print("\n  [2] ALL .zip files on the system:")
-    result = subprocess.run(
-        "find / -maxdepth 5 -name '*.zip' 2>/dev/null",
-        shell=True, capture_output=True, text=True
-    )
-    if result.stdout.strip():
-        for line in result.stdout.strip().split('\n'):
-            print(f"      {line}")
-    else:
-        print("      NONE FOUND")
-
-    # Check /kaggle/input directories
-    print("\n  [3] /kaggle/input directory structure:")
-    result = subprocess.run(
-        "ls -laR /kaggle/input/ 2>/dev/null | head -80",
-        shell=True, capture_output=True, text=True
-    )
-    if result.stdout.strip():
-        for line in result.stdout.strip().split('\n'):
-            print(f"      {line}")
-    else:
-        print("      (empty or permission denied)")
-
-    # Check working dir
-    print("\n  [4] /kaggle/working contents:")
-    result = subprocess.run(
-        "ls -la /kaggle/working/ 2>/dev/null",
-        shell=True, capture_output=True, text=True
-    )
-    if result.stdout.strip():
-        for line in result.stdout.strip().split('\n'):
-            print(f"      {line}")
-
-    print()
+        print(f"  ❌ Could not locate data: {mode}")
+        print("\n  TROUBLESHOOTING:")
+        print("  1. Make sure the dataset is added to your notebook")
+        print("  2. Check the dataset path in the script (INPUT_DIR)")
+        print("  3. Your dataset should contain either:")
+        print("     a) 4 .zip files (Roboflow export format)")
+        print("     b) 4 unzipped folders (Roboflow folder format)")
+        print(f"  4. What we found: {[x.name for x in INPUT_DIR.iterdir()] if INPUT_DIR.exists() else 'INPUT_DIR does not exist'}")
+        return False
 
 
-def find_zips_robust():
-    """Search EVERYWHERE for zip files — no assumptions about path."""
-    found_zips = {}  # expected_name -> actual_path
-    all_zips_found = []
-
-    search_locations = [
-        "/kaggle/input",
-        "/kaggle/working",
-        "/kaggle/temp",
-        "/root",
-        "/tmp",
-    ]
-
-    for location in search_locations:
-        loc = Path(location)
-        if not loc.exists():
-            continue
-        for z in loc.rglob("*.zip"):
-            all_zips_found.append(z)
-            name = z.name
-            # Match against expected names (exact or contains)
-            for expected in ZIP_NAMES:
-                if name == expected or expected in name or name.replace(".zip", "") in expected:
-                    found_zips[expected] = z
-                    break
-
-    return found_zips, all_zips_found
-
-
-def step_0_find_and_copy_zips():
-    header("STEP 0: Locate and Copy Dataset Zips")
-
-    found, all_zips = find_zips_robust()
-
-    print("  Zips matched to expected names:")
-    for name in ZIP_NAMES:
-        if name in found:
-            print(f"  ✅ {name}")
-            print(f"     Found at: {found[name]}")
-        else:
-            print(f"  ❌ {name} — NOT FOUND")
-
-    if all_zips and not found:
-        print(f"\n  ⚠️  Found {len(all_zips)} zip(s), but names don't match:")
-        for z in all_zips:
-            print(f"     • {z} ({z.stat().st_size / 1024 / 1024:.1f} MB)")
-        print("  Attempting to use whatever zips are available...")
-        # Use whatever zips we found, mapping them to expected names
-        for i, z in enumerate(all_zips):
-            if i < len(ZIP_NAMES):
-                found[ZIP_NAMES[i]] = z
-                print(f"  ↳ Mapping: {z.name} → {ZIP_NAMES[i]}")
-
-    if not found:
-        print("\n  ❌ NO ZIP FILES FOUND ANYWHERE!")
-        print("  =============================================")
-        print("  You MUST upload the dataset zip files first!")
-        print("")
-        print("  HOW TO FIX:")
-        print("  1. Download these 4 Roboflow zip files:")
-        print("     • wet-floor-detection1.v2i.yolov8.zip")
-        print("     • Fire Alarm.v24i.yolov8 (1).zip")
-        print("     • Emergency Exit Signs.v4i.yolov8.zip")
-        print("     • Hard Hat Universe.v4i.yolov8.zip")
-        print("  2. Go to Kaggle → Datasets → '+ New Dataset'")
-        print("  3. Upload all 4 zips as a new dataset")
-        print("  4. Make it PUBLIC")
-        print("  5. Come back to your notebook → 'Add Data' (right panel)")
-        print("  6. Search for your dataset → Add it")
-        print("  7. Re-run this cell!")
-        print("  =============================================")
-
-        # Full debug
-        debug_inventory()
-        sys.exit(1)
-
-    # Copy to workspace
-    WORK_DIR.mkdir(parents=True, exist_ok=True)
-    os.chdir(str(WORK_DIR))
-
-    copied = 0
-    for name, src_path in found.items():
-        dst = WORK_DIR / name
-        if not dst.exists():
-            try:
-                shutil.copy2(str(src_path), str(dst))
-                copied += 1
-                size = dst.stat().st_size / 1024 / 1024
-                print(f"  📦 Copied: {name} ({size:.1f} MB)")
-            except Exception as e:
-                print(f"  ❌ Failed to copy {name}: {e}")
-        else:
-            print(f"  ↩️  Already in workspace: {name}")
-
-    print(f"\n  {copied} zip file(s) in workspace")
-    return True
+def safe_chdir(path):
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
+    os.chdir(str(path))
 
 
 def step_1_clone():
-    header("STEP 1: Clone Repository into Workspace")
-
-    # Clean repo files (keep zips!)
-    for item in WORK_DIR.iterdir():
-        if item.suffix == '.zip':
-            continue
-        if item.name == '__pycache__':
-            continue
-        if item.is_dir():
-            shutil.rmtree(str(item))
-        else:
-            item.unlink()
-
-    os.system(f"git clone {REPO_URL} . --quiet 2>&1")
+    header("STEP 1: Clone Repository")
+    safe_chdir("/kaggle/working")
+    if WORK_DIR.exists():
+        shutil.rmtree(str(WORK_DIR))
+    WORK_DIR.mkdir(parents=True, exist_ok=True)
+    os.system(f"git clone {REPO_URL} {WORK_DIR} --quiet 2>&1")
+    safe_chdir(WORK_DIR)
     print(f"  CWD: {os.getcwd()}")
-
-    # Verify
     if (WORK_DIR / "code" / "setup_v2.py").exists():
-        print("✅ Repo cloned successfully")
+        print("✅ Repo cloned")
     else:
-        print("❌ Clone may have failed — checking...")
-        os.system("git clone " + REPO_URL + " . 2>&1")
-
-    # Re-copy zips after clone (clone may have cleared them)
-    for z in WORK_DIR.glob("*.zip"):
-        pass  # Should be there already
-    print(f"  Zip files present: {len(list(WORK_DIR.glob('*.zip')))}")
+        print("❌ Clone failed")
+        sys.exit(1)
 
 
-def step_2_build():
-    header("STEP 2: Build Dataset")
+def step_2_prepare_zips_for_setup():
+    """Move the prepared zips from step 0 into the cloned repo dir."""
+    header("STEP 2: Move Zips into Repo Root")
+
+    # Find zip files in WORK_DIR
+    zips = list(WORK_DIR.glob("*.zip"))
+    print(f"  Found {len(zips)} zip file(s) in workspace")
+    for z in zips:
+        print(f"    • {z.name} ({z.stat().st_size/1024/1024:.1f} MB)")
+
+    if not zips:
+        print("  ❌ No zip files in workspace! Cannot continue.")
+        return False
+
+    # They should already be in WORK_DIR which IS the repo root
+    print("  ✅ Zips are in repo root, ready for setup_v2.py")
+    return True
+
+
+def step_3_build():
+    header("STEP 3: Build Dataset (setup_v2.py)")
+    print("  This will extract zips, remap class IDs, and split data.\n")
     os.system("python code/setup_v2.py")
-    print("✅ Dataset built")
+    if (WORK_DIR / "dataset" / "data.yaml").exists():
+        print("✅ Dataset built successfully")
+    else:
+        print("❌ Dataset build failed")
 
 
-def step_3_analyze():
-    header("STEP 3: Analyze Original Distribution")
+def step_4_analyze():
+    header("STEP 4: Analyze Original Distribution")
     from code.analyze_distribution import analyze_dataset
     analyze_dataset("dataset")
     print("✅ Analysis complete")
 
 
-def step_4_augment():
-    header("STEP 4: Balanced Augmentation (10.4x → 1.0x)")
+def step_5_augment():
+    header("STEP 5: Balanced Augmentation (10.4x → 1.0x)")
     os.system(f"python code/augment_v2.py --balance-mode equalize --target-count {TARGET_COUNT} 2>&1")
     print("✅ Balancing complete")
 
 
-def step_5_verify():
-    header("STEP 5: Verify Balance")
+def step_6_verify():
+    header("STEP 6: Verify Balance")
     from code.analyze_distribution import analyze_dataset
     analyze_dataset("dataset")
-    print("✅ Balance verified")
+    print("\n✅ Balance verified")
 
 
-def step_6_extra():
-    header("STEP 6: Class Weights + BBox Statistics")
+def step_7_extra():
+    header("STEP 7: Class Weights + BBox Statistics")
     os.system("python code/apply_class_weights.py")
     os.system("python code/dataset_analysis.py dataset")
     print("✅ Done")
 
 
-def step_7_train():
-    header("STEP 7: Train YOLOv8m (150 epochs, balanced)")
-    print("  batch=16, lr0=0.005, cos_lr, warmup=10")
-    print("  ⏱️  ~15-20 hours on T4\n")
+def step_8_train():
+    header("STEP 8: Train YOLOv8m (150 epochs)")
+    print("  Config: batch=16, lr0=0.005, cos_lr, warmup=10, epochs=150")
+    print("  ⏱️  ~15-20 hours on Kaggle T4\n")
 
     best = WORK_DIR / "runs/detect/campus_safety_v3_balanced/weights/best.pt"
     if best.exists():
@@ -260,27 +226,36 @@ def step_7_train():
     return code == 0
 
 
-def step_8_evaluate():
-    header("STEP 8: Evaluate")
+def step_9_evaluate():
+    header("STEP 9: Evaluate Model")
     import json
     w = WORK_DIR / "runs/detect/campus_safety_v3_balanced/weights/best.pt"
     if not w.exists():
         w = WORK_DIR / "model/weights/best_v2.pt"
         if not w.exists():
-            print("  No weights found")
-            return
+            print("  ⚠️  No weights found, checking for any .pt file...")
+            pts = list(WORK_DIR.glob("**/*.pt")) + list(WORK_DIR.glob("**/*.best.pt"))
+            if pts:
+                w = pts[0]
+                print(f"  Using: {w}")
+            else:
+                print("  No weights found. Skipping evaluation.")
+                return
+
     os.system(f"python code/evaluate_model.py --weights {w} --json-out results/evaluation_results.json")
     f = WORK_DIR / "results/evaluation_results.json"
     if f.exists():
         d = json.load(open(f))
         o = d.get("overall", {})
-        print(f"\n  Precision={o.get('precision',0):.3f}  Recall={o.get('recall',0):.3f}  "
-              f"mAP50={o.get('map50',0):.4f}  mAP50-95={o.get('map50_95',0):.4f}")
+        print(f"\n  Precision={o.get('precision',0):.3f}  "
+              f"Recall={o.get('recall',0):.3f}  "
+              f"mAP50={o.get('map50',0):.4f}  "
+              f"mAP50-95={o.get('map50_95',0):.4f}")
     print("✅ Done")
 
 
-def step_9_figures():
-    header("STEP 9: Generate All Figures")
+def step_10_figures():
+    header("STEP 10: Generate Report Figures")
     v2 = WORK_DIR / "results/results_v2.csv"
     v3 = WORK_DIR / "runs/detect/campus_safety_v3_balanced/results.csv"
     csv = str(v3 if v3.exists() else v2 if v2.exists() else "")
@@ -292,23 +267,23 @@ def step_9_figures():
            "--predictions-dir results/predictions")
     if csv:
         cmd += f" --results-csv {csv}"
-    e = WORK_DIR / "results/evaluation_results.json"
-    if e.exists():
-        cmd += f" --evaluation-json {e}"
+    ej = WORK_DIR / "results/evaluation_results.json"
+    if ej.exists():
+        cmd += f" --evaluation-json {ej}"
     os.system(cmd)
     print("✅ Figures generated")
 
 
-def step_10_show():
-    header("STEP 10: Display Results")
+def step_11_show():
+    header("STEP 11: Display Results")
     try:
         from IPython.display import Image, display
         for label, fname in [
-            ("Balance: Before→After", "03_before_after_comparison.png"),
+            ("Before→After Balance", "03_before_after_comparison.png"),
             ("Distribution Before", "01_class_distribution_before.png"),
             ("Distribution After", "02_class_distribution_after.png"),
             ("Training Loss", "05_training_loss_curves.png"),
-            ("All Metrics + LR", "07_metrics_curves.png"),
+            ("Metrics + LR", "07_metrics_curves.png"),
             ("Per-Class mAP", "09_per_class_map.png"),
             ("Per-Class F1", "10_per_class_f1.png"),
             ("Confusion Matrix", "confusion_matrix.png"),
@@ -318,11 +293,12 @@ def step_10_show():
                 print(f"\n  📊 {label}")
                 display(Image(filename=str(p), width=700))
     except ImportError:
-        print("  See results/plots/")
+        print("  See results/plots/ for figures")
+
     print("""
   ╔═══════════════════════════════════════════════════════╗
-  │  COMPLETE ✅  All results in results/plots/          │
-  │  Docs: docs/ (7 files)                               │
+  │  COMPLETE ✅  Results in results/plots/              │
+  │  Documentation in docs/ (7 markdown files)           │
   ╚═══════════════════════════════════════════════════════╝""")
 
 
@@ -334,18 +310,19 @@ if __name__ == "__main__":
     print("""
     ╔══════════════════════════════════════════════════════╗
     ║  BCS407 Campus Safety — Kaggle Full Pipeline        ║
-    ║  Auto-locates zips • No hardcoded paths needed      ║
+    ║  Auto-detects zipped/unzipped data                  ║
     ╚══════════════════════════════════════════════════════╝
     """)
 
-    step_0_find_and_copy_zips()
+    step_0_prepare()
     step_1_clone()
-    step_2_build()
-    step_3_analyze()
-    step_4_augment()
-    step_5_verify()
-    step_6_extra()
-    step_7_train()
-    step_8_evaluate()
-    step_9_figures()
-    step_10_show()
+    step_2_prepare_zips_for_setup()
+    step_3_build()
+    step_4_analyze()
+    step_5_augment()
+    step_6_verify()
+    step_7_extra()
+    step_8_train()
+    step_9_evaluate()
+    step_10_figures()
+    step_11_show()
