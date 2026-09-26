@@ -1,6 +1,6 @@
 # AI-Based Smart Campus Safety Detection System — Technical Report
 
-> **Authors:** Mohammad Thabet Hassan, Ahmed Sami Alameri, Fahad Al Jazzeri, Omar Alraas, Obadah Loul, Saifeddin Altawarh
+> **Authors:** Mohammad Thabet Hassan, Ahmed Sami Alameri, Fahad Sadek, Omar Alraas, Obadah Loul, Saifeddin Altawarh
 >
 > **Course:** BCS407 – Artificial Intelligence
 >

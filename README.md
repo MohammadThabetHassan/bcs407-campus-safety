@@ -18,7 +18,7 @@
 |--------|--------|
 | Mohammad Thabet Hassan | [@MohammadThabetHassan](https://github.com/MohammadThabetHassan) |
 | Ahmed Sami Alameri | [@AhmedSamiAlameri](https://github.com/AhmedSamiAlameri) |
-| Fahad Al Jazzeri | [@fahadALjazzeri](https://github.com/fahadALjazzeri) |
+| Fahad Sadek | [@fahadALjazzeri](https://github.com/fahadALjazzeri) |
 | Omar Alraas | [@omaralraas](https://github.com/omaralraas) |
 | Obadah Loul | [@obadah-loul](https://github.com/obadah-loul) |
 | Saifeddin Altawarh | [@Saifeddint](https://github.com/Saifeddint) |
