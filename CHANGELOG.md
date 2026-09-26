@@ -2,6 +2,17 @@
 
 All notable changes to the BCS407 Campus Safety Detection project.
 
+## [Unreleased]
+
+### Docs
+- README: live demo link (https://campussafety.eu.cc) and demo screenshot near the top
+- v3 (balanced, 150 epochs) relabelled as planned / not yet trained across README and `docs/`; `docs/EVALUATION.md` is the source of truth for measured results
+- v2 numbers aligned with `results/results_v2.csv` and the `train_args` in `model/weights/best_v2.pt` (batch 32, lr0 0.001, lrf 0.0001, 2× T4 on Kaggle); TTA figures labelled as such
+- Augmentation docs now list the 12 transforms in `code/augment_v2.py` (no weather transforms)
+- README notes that `code/inference.py` saves annotated output unless `--nosave` is passed
+- Removed the Email column from `contributors/CONTRIBUTORS.md`
+- Moved `ENHANCEMENT_PLAN.md` to `docs/archive/`; README marks locally generated outputs (stats JSON, augmentation log, metrics summary) as not committed; GitHub Pages entry below corrected
+
 ## [2.0.0] — 2026-03-31
 
 ### Changed
@@ -11,7 +22,7 @@ All notable changes to the BCS407 Campus Safety Detection project.
 - **Training**: 100 epochs with cosine LR schedule (was 50, fixed LR)
 - **Augmentation**: added offline albumentations pipeline (brightness, contrast, HSV, blur, noise, shift/scale/rotate, shadow, H-flip)
 - **Dataset size**: ~10,000+ images across 4 classes (was 6,079)
-- **GitHub Pages**: migrated workflow from `peaceiris/actions-gh-pages@v3` to `actions/deploy-pages@v4`
+- **GitHub Pages**: live demo served from the `docs/` folder on `main` (no GitHub Actions deploy workflow is committed in this repo)
 - **README**: full rewrite with v2 classes, version history, dataset table, project structure
 - **requirements.txt**: added albumentations, roboflow, updated version ranges
 - **Live demo**: added canvas bounding box overlay, FPS counter, class color legend, model info card
@@ -19,7 +30,7 @@ All notable changes to the BCS407 Campus Safety Detection project.
 ### Added
 - `code/setup_v2.py` — v2 dataset rebuild from zip files
 - `code/augment_v2.py` — offline augmentation pipeline with albumentations
-- `contributors/CONTRIBUTORS.md` — team roles and contact info
+- `contributors/CONTRIBUTORS.md` — team roles
 - `LICENSE` — MIT license
 - `CHANGELOG.md` — this file
 - Model info card on live demo page

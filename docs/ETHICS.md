@@ -97,7 +97,7 @@ Camera Feed → [Real-time Processing] → Detection Results
 
 | Source | Risk Level | Mitigation |
 |--------|-----------|------------|
-| **Training data imbalance** | Medium | Addressed through class equalization (2,500 images per class) |
+| **Training data imbalance** | Medium | Addressed through class equalization (2,500 images per class; the balanced v3 model is not yet trained) |
 | **Lighting conditions** | Medium | Augmentation includes brightness, contrast, and gamma variations |
 | **Camera angles** | Low-Medium | Source datasets use multiple perspectives; flip augmentation adds diversity |
 | **Object appearance** | Medium | Multiple visual variants in training data (different helmet colors, sign sizes) |

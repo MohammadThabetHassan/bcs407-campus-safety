@@ -1,8 +1,11 @@
-# Enhancement Plan — BCS407 Campus Safety Project
+# Roadmap — BCS407 Campus Safety Documentation Update (completed)
 
 ## Overview
-This document outlines the required enhancements to the `bcs407-campus-safety` repository
-to address professor feedback before final submission.
+This is the roadmap used for the May 2026 documentation update of the `bcs407-campus-safety`
+repository, kept for reference. Each "Current state" note describes the repository before that
+update. The new documents it lists (`docs/MOTIVATION.md`, `docs/LITERATURE_REVIEW.md`,
+`docs/METHODOLOGY.md`, `docs/EVALUATION.md`, `docs/DISCUSSION.md`, `docs/ETHICS.md`,
+`docs/TECHNICAL_REPORT.md`) and `code/analyze_distribution.py` have since been added.
 
 ---
 

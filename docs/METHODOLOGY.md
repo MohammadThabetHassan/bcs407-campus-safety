@@ -88,11 +88,8 @@ Each original image generates up to **5 augmented copies** using randomized comb
 | Random Shadow | 1–3 shadows, bottom region | 30% |
 | Horizontal Flip | Left-right mirror | 50% |
 | Vertical Flip | Up-down mirror | 5% |
-| Random Rain | Subtle rain overlay | 10% |
-| Random Snow | Subtle snow overlay | 10% |
-| Random Fog | Subtle fog overlay | 10% |
 
-Bounding boxes are transformed alongside images to maintain annotation accuracy. Post-augmentation, bounding boxes below 5% relative area are discarded.
+These are the 12 transforms in `build_strong_transform()` in `code/augment_v2.py`. Bounding boxes are transformed alongside images to maintain annotation accuracy. Post-augmentation, boxes with less than 25% of their area still visible are dropped (`min_visibility=0.25`), as are boxes narrower or shorter than 0.5% of the image.
 
 #### Mosaic Augmentation (Secondary)
 When per-image augmentation alone is insufficient, we compose **2×2 mosaics** by stitching four images from the same class. This:
@@ -102,10 +99,10 @@ When per-image augmentation alone is insufficient, we compose **2×2 mosaics** b
 
 ### 2.4 Post-Augmentation Verification
 
-After augmentation, the pipeline re-runs distribution analysis and confirms:
-- All classes have exactly 2,500 ± 0 training images
-- Imbalance ratio reduced from 10.4x to 1.0x
-- Augmentation log saved to `results/augmentation_log.csv`
+After augmentation, the pipeline re-counts the training split and reports:
+- Per-class training image counts against the 2,500 target (`--target-count`)
+- The resulting imbalance ratio (target 1.0x, down from 10.4x)
+- Augmentation log saved to `results/augmentation_log.csv` (generated locally, not committed)
 
 ---
 
@@ -136,11 +133,13 @@ After augmentation, the pipeline re-runs distribution analysis and confirms:
 
 ### 4.1 Hyperparameters
 
+These are the settings for the planned balanced v3 run (`code/train_balanced.sh`), which has not been trained yet. The trained v2 checkpoint used 100 epochs, batch 32 on 2 GPUs, lr0 0.001 and lrf 0.0001 (from the `train_args` in `model/weights/best_v2.pt`).
+
 | Parameter | Value | Justification |
 |-----------|-------|---------------|
 | Epochs | 150 | Sufficient for convergence with balanced data |
 | Image size | 640×640 | Standard resolution; balances detail vs. speed |
-| Batch size | 16 | Largest stable batch for Colab T4 GPU (16GB VRAM) |
+| Batch size | 16 | Largest stable batch for a single T4 GPU (16GB VRAM, `device=0`) |
 | Initial learning rate | 0.005 | Moderate LR for stable convergence with balanced classes |
 | Final learning rate | 0.01 | Smooth decay endpoint |
 | LR schedule | Cosine annealing | Smooth, theoretically optimal decay (Loshchilov & Hutter, 2017) |
@@ -211,9 +210,9 @@ Due to the deterministic nature of our training pipeline (fixed random seed = 42
 
 | Component | Specification |
 |-----------|---------------|
-| GPU | NVIDIA T4 (Google Colab) / 1× Tesla T4 |
-| VRAM | 16 GB |
-| CPU | Colab shared / variable |
+| GPU | 2× NVIDIA T4 (Kaggle) for the v2 run; `code/train_balanced.sh` targets 1 GPU (`device=0`) |
+| VRAM | 16 GB per GPU |
+| CPU | Shared cloud-notebook CPU / variable |
 | RAM | 12–13 GB available |
 
 ### 6.2 Software
