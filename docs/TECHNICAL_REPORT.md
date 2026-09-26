@@ -12,7 +12,7 @@
 
 ## Abstract
 
-This report presents an AI-based smart campus safety monitoring system built using YOLOv8 object detection. The system detects four critical safety objects in indoor campus environments: wet floor signs, fire alarm pull stations, emergency exit signs, and safety helmets. A significant challenge addressed in this work is the severe class imbalance present in the source datasets — safety helmet images outnumber the smallest class by a factor of 10.4x. We implement a comprehensive offline augmentation pipeline using Albumentations, combined with strategic random undersampling of the majority class, to equalize all classes to 2,500 training images each. The resulting balanced model achieves an overall mAP@0.5 of 0.980 and mAP@0.5:0.95 of 0.818, demonstrating that class balancing improves detection reliability across all four safety categories without degrading overall performance. We provide a complete quantitative analysis of dataset characteristics, model training dynamics, per-class evaluation metrics, and ethical considerations aligned with ACM, IEEE, and IST professional codes of conduct.
+This report presents an AI-based smart campus safety monitoring system built using YOLOv8 object detection. The system detects four critical safety objects in indoor campus environments: wet floor signs, fire alarm pull stations, emergency exit signs, and safety helmets. A significant challenge addressed in this work is the severe class imbalance present in the source datasets — safety helmet images outnumber the smallest class by a factor of 10.4x. We implement a comprehensive offline augmentation pipeline using Albumentations, combined with strategic random undersampling of the majority class, to equalize all classes to 2,500 training images each. The baseline v2 model, trained on the imbalanced set, achieves an overall mAP@0.5 of 0.980 and mAP@0.5:0.95 of 0.818 with test-time augmentation (0.977 / 0.794 in the committed validation log); the balanced v3 retrain is configured but has not been trained yet, so the effect of balancing is not yet measured. We provide a complete quantitative analysis of dataset characteristics, model training dynamics, per-class evaluation metrics, and ethical considerations aligned with ACM, IEEE, and IST professional codes of conduct.
 
 **Keywords:** Object Detection, YOLOv8, Campus Safety, Class Imbalance, Computer Vision, PPE Detection, Data Augmentation
 
@@ -96,7 +96,7 @@ The training split exhibited a severe 10.4× imbalance (safety_helmet vs. wet_fl
 - **Undersampling** for safety_helmet (5,000 → 2,500)
 - **Oversampling** via Albumentations for minority classes (fire_alarm, wet_floor_sign, emergency_exit)
 - **Mosaic augmentation** (2×2 image composites) for additional diversity
-- **15 offline augmentation transforms** including color jitter, noise, blur, geometric transforms, weather simulation, and cutout
+- **12 offline augmentation transforms** (`build_strong_transform()` in `code/augment_v2.py`): color jitter (brightness/contrast, HSV, RGB shift, CLAHE, gamma), blur, noise, cutout (coarse dropout), shift/scale/rotate, shadow overlay, and horizontal/vertical flips
 
 ### 3.3 Model Architecture
 
@@ -107,6 +107,8 @@ YOLOv8m was selected for optimal accuracy-compute balance:
 - **Pretrained weights:** COCO 80-class transfer learning
 
 ### 3.4 Training Configuration
+
+Planned balanced v3 run (`code/train_balanced.sh`; not yet trained). The trained v2 baseline used 100 epochs, batch 32 on 2 GPUs, lr0 0.001 / lrf 0.0001 and AdamW (`train_args` in `model/weights/best_v2.pt`).
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
@@ -126,6 +128,8 @@ Metrics: Precision, Recall, F1, mAP@0.5, mAP@0.5:0.95. Single held-out 10% test 
 ## 4. Results and Analysis
 
 ### 4.1 Overall Performance
+
+v2 baseline (imbalanced training set), reported with test-time augmentation. The committed validation log (`results/results_v2.csv`) gives mAP@0.5 0.977 and mAP@0.5:0.95 0.794; see [EVALUATION.md](EVALUATION.md).
 
 | Metric | Value |
 |--------|-------|
@@ -147,16 +151,17 @@ Metrics: Precision, Recall, F1, mAP@0.5, mAP@0.5:0.95. Single held-out 10% test 
 
 **Key observations:**
 - `emergency_exit` shows the largest mAP gap (0.212) due to sign orientation variability and similar rectangular shapes in complex backgrounds
-- `wet_floor_sign` achieves the highest mAP@0.5 (0.990) despite having the fewest original training images, demonstrating the effectiveness of our augmentation strategy
-- `safety_helmet` has the highest recall (0.982) reflecting the model's strength on the largest class even after balancing
+- `wet_floor_sign` achieves the highest mAP@0.5 (0.990) despite having the fewest original training images
+- `safety_helmet` has the highest recall (0.982) reflecting the model's strength on the largest class on the imbalanced set
 - Mean mAP gap across classes is 0.162, indicating good localization quality overall
 
 ### 4.3 Training Convergence
 
-- **Phase 1 (Epochs 1–20):** Rapid improvement; mAP@0.5 increases from 0.708 to 0.963 (+35.7%)
+v2 run, from `results/results_v2.csv` (100 epochs):
+
+- **Phase 1 (Epochs 1–20):** Rapid improvement; mAP@0.5 increases from 0.708 to 0.963 (+36.0%)
 - **Phase 2 (Epochs 20–50):** Steady gains; precision and recall approach asymptotic values
 - **Phase 3 (Epochs 50–100):** Marginal improvements; validation loss plateaus at epoch ~70
-- **Phase 4 (Epochs 100–150):** Fine-tuning of decision boundaries; minimal overfitting observed (train-val loss gap <0.15)
 
 ### 4.4 Confusion Analysis
 
@@ -167,11 +172,11 @@ Primary confusion pairs:
 
 ### 4.5 Ablation: Class Balancing Impact
 
-Comparison of balanced (v3) vs. original (v2) training shows:
-- Minority class recall improved by an estimated 3–5%
-- Overall mAP@0.5 maintained at 0.980+
-- Worst-class mAP gap reduced from 0.212 to projected ~0.180
-- No degradation in any class's performance
+Expected (not yet measured; the balanced v3 model has not been trained). Hypotheses for the balanced (v3) vs. original (v2) comparison:
+- Minority class recall improves by an estimated 3–5%
+- Overall mAP@0.5 stays at or above 0.980
+- Worst-class mAP gap falls from 0.212 to a projected ~0.180
+- No class degrades
 
 ---
 
@@ -194,8 +199,8 @@ The system serves as a decision-support tool. Human safety officers retain autho
 
 This project demonstrates that a unified YOLOv8m-based object detection system can effectively monitor four critical campus safety categories in real time. Key achievements include:
 
-1. **Class balance resolution**: 10.4× → 1.0× imbalance ratio through systematic augmentation
-2. **High detection accuracy**: 0.980 mAP@0.5 across all four classes
+1. **Class balancing pipeline**: equalizes the 10.4× imbalanced training split to 1.0× through systematic augmentation and undersampling (the balanced v3 model is not yet trained)
+2. **High detection accuracy**: 0.980 mAP@0.5 across all four classes (v2, with test-time augmentation)
 3. **Real-time performance**: 5.2 ms inference time, enabling continuous monitoring
 4. **Ethical deployment**: Privacy-preserving, bias-aware, human-in-the-loop design
 

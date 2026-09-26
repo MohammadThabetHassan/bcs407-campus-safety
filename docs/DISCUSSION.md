@@ -6,7 +6,7 @@
 
 ## 1. Summary of Results
 
-Our YOLOv8m-based campus safety detection system achieved strong overall performance:
+Our YOLOv8m-based campus safety detection system (v2, trained on the imbalanced set) achieved strong overall performance. Figures are with test-time augmentation; the committed validation log gives mAP@0.5 0.977 and mAP@0.5:0.95 0.794 (see [Evaluation](EVALUATION.md)). The balanced v3 model has not been trained yet.
 
 | Metric | Result | Assessment |
 |--------|--------|------------|
@@ -31,7 +31,7 @@ Our YOLOv8m-based campus safety detection system achieved strong overall perform
 
 | Method | Backbone | Classes | mAP@0.5 | mAP@0.5:0.95 | Dataset Size | Deployment |
 |--------|----------|---------|---------|--------------|-------------|------------|
-| **Ours (v3, balanced)** | **YOLOv8m** | **4** | **0.980** | **0.818** | **10,000** | **GPU/Edge** |
+| **Ours (v2, TTA)** | **YOLOv8m** | **4** | **0.980** | **0.818** | **~10,000 (imbalanced 10.4×; balanced v3 pending)** | **GPU/Edge** |
 | Fang et al. [4] | Faster R-CNN | 1 (helmet) | 0.92 | — | ~2,000 | Server |
 | Wang et al. [5] | YOLOv4 | 3 (PPE) | 0.95 | — | ~5,000 | Jetson Nano |
 | Chen et al. [12] | ResNet-50 | 3 (hazard) | 0.89 | — | ~3,000 | Server |
@@ -39,7 +39,7 @@ Our YOLOv8m-based campus safety detection system achieved strong overall perform
 
 **Key advantages of our work:**
 - **More classes**: 4 safety categories vs. 1–3 in existing work
-- **Class imbalance addressed**: First work to systematically quantify and correct imbalance in campus safety detection
+- **Class imbalance addressed**: First work to systematically quantify imbalance in campus safety detection and build a correction pipeline (balanced v3 training pending)
 - **Higher mAP**: 0.980 mAP@0.5 exceeds all comparable systems
 - **Both indoor and PPE detection**: Combines environmental hazards + safety equipment
 
@@ -50,7 +50,7 @@ Our YOLOv8m-based campus safety detection system achieved strong overall perform
 ### What Worked Well
 1. **YOLOv8m as backbone**: Achieved the best accuracy among YOLOv8 variants without excessive compute
 2. **Offline augmentation + online augmentation**: Combining both strategies yielded diverse training samples
-3. **Class equalization**: Improved minority class recall by an estimated 3–5%
+3. **Class equalization (planned v3)**: Expected to improve minority class recall by an estimated 3–5%; not yet measured
 4. **Cosine annealing with warmup**: Smooth convergence without learning rate oscillation
 
 ### Surprising Results
@@ -60,7 +60,6 @@ Our YOLOv8m-based campus safety detection system achieved strong overall perform
 
 ### Training Observations
 - Validation loss plateaued at epoch ~70 for the original model
-- The balanced model required ~80 epochs to reach comparable performance (due to effective doubling of training data)
 - Early epochs showed faster improvement for majority classes; minority classes caught up after epoch ~40
 
 ---

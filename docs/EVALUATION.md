@@ -2,23 +2,29 @@
 
 > BCS407 – Artificial Intelligence | Canadian University Dubai | 2026
 
+This file is the source of truth for results in this repo. Measured numbers come from the committed v2 training log (`results/results_v2.csv`) and checkpoint (`model/weights/best_v2.pt`). Anything marked *Expected*, *Target* or *TBD* has not been measured.
+
 ---
 
 ## 1. Overall Model Performance
 
 ### v2 Original Model (Unbalanced, YOLOv8m, 100 epochs)
 
-| Metric | Value |
-|--------|-------|
-| Precision | 0.964 |
-| Recall | 0.967 |
-| mAP@0.5 | 0.980 |
-| mAP@0.5:0.95 | 0.818 |
-| Inference Speed | 5.2 ms/image (GPU, FP32) |
-| Training Time | 8.71 hours |
-| Hardware | NVIDIA T4 (Google Colab) |
+| Metric | Validation (best epoch, `results_v2.csv`) | Reported with TTA |
+|--------|-------|-------|
+| Precision | 0.970 | 0.964 |
+| Recall | 0.952 | 0.967 |
+| mAP@0.5 | 0.977 | 0.980 |
+| mAP@0.5:0.95 | 0.794 | 0.818 |
+| Inference Speed | 5.2 ms/image (GPU, FP32) | |
+| Training Time | 8.71 hours | |
+| Hardware | 2× NVIDIA T4 (Kaggle) | |
+
+*The validation column is the checkpoint saved in `best_v2.pt` (epoch 99 of `results_v2.csv`, selected on mAP@0.5:0.95). The TTA column (test-time augmentation) is the figure reported in the README and CHANGELOG; the TTA evaluation output is not committed. Per-class numbers in sections 2–3 are the TTA figures.*
 
 ### v3 Balanced Model (Equalized to 2500/class, YOLOv8m, 150 epochs)
+
+**Status: planned, not yet trained.** No v3 weights or training log are committed. The values below are targets, not measurements.
 
 | Metric | Expected | Notes |
 |--------|----------|-------|
@@ -30,7 +36,7 @@
 
 ---
 
-## 2. Per-Class Performance (v2 Original)
+## 2. Per-Class Performance (v2 Original, with TTA)
 
 | Class | Precision | Recall | F1 | mAP@0.5 | mAP@0.5:0.95 |
 |-------|-----------|--------|----|---------|--------------|
@@ -83,17 +89,19 @@ The normalized confusion matrix reveals which classes are commonly confused:
 
 ### Convergence Metrics
 
-| Metric | Epoch 1 | Epoch 50 | Epoch 100 | Best |
+All values in this table are from `results/results_v2.csv` (validation split, no TTA).
+
+| Metric | Epoch 1 | Epoch 50 | Epoch 100 | Best (epoch) |
 |--------|---------|----------|-----------|------|
-| mAP@0.5 | 0.708 | 0.964 | 0.977 | 0.980 |
-| mAP@0.5:0.95 | 0.332 | 0.759 | 0.803 | 0.818 |
-| Precision | 0.734 | 0.961 | 0.971 | 0.971 |
-| Recall | 0.629 | 0.950 | 0.952 | 0.967 |
-| Val Box Loss | 1.448 | 0.481 | 0.428 | 0.405 |
+| mAP@0.5 | 0.708 | 0.977 | 0.977 | 0.977 (50) |
+| mAP@0.5:0.95 | 0.332 | 0.757 | 0.794 | 0.794 (99) |
+| Precision | 0.734 | 0.970 | 0.971 | 0.972 (48) |
+| Recall | 0.629 | 0.952 | 0.952 | 0.961 (90) |
+| Val Box Loss | 1.448 | 0.935 | 0.844 | 0.844 (100) |
 
 ### Convergence Analysis
 
-- **Fast learning phase**: Epochs 1–20 show rapid improvement (mAP@0.5 from 0.708 to 0.963, a 35.7% gain)
+- **Fast learning phase**: Epochs 1–20 show rapid improvement (mAP@0.5 from 0.708 to 0.963, a 36.0% gain)
 - **Stabilization phase**: Epochs 20–50 see steady incremental gains
 - **Plateau**: After epoch ~70, improvements become marginal (<0.1% per epoch)
 - **Overfitting check**: Gap between train loss and val loss remains <0.15 after epoch 50, indicating good generalization
@@ -107,7 +115,7 @@ The normalized confusion matrix reveals which classes are commonly confused:
 
 | Metric | Before (Unbalanced) | After (Balanced) | Change |
 |--------|--------------------|--------------------|--------|
-| Minority class recall | 0.89 (wet_floor) | TBD | Expected +3–5% |
+| Minority class recall | 0.979 (wet_floor) | TBD | Expected +3–5% |
 | Majority class recall | 0.98 (safety_helmet) | TBD | Stable |
 | Overall mAP@0.5 | 0.980 | TBD | Target: ≥0.980 |
 | mAP Gap (worst class) | 0.212 (emergency_exit) | TBD | Expected reduction |
