@@ -139,7 +139,7 @@ These are the settings for the planned balanced v3 run (`code/train_balanced.sh`
 |-----------|-------|---------------|
 | Epochs | 150 | Sufficient for convergence with balanced data |
 | Image size | 640×640 | Standard resolution; balances detail vs. speed |
-| Batch size | 16 | Largest stable batch for Colab T4 GPU (16GB VRAM) |
+| Batch size | 16 | Largest stable batch for a single T4 GPU (16GB VRAM, `device=0`) |
 | Initial learning rate | 0.005 | Moderate LR for stable convergence with balanced classes |
 | Final learning rate | 0.01 | Smooth decay endpoint |
 | LR schedule | Cosine annealing | Smooth, theoretically optimal decay (Loshchilov & Hutter, 2017) |
@@ -211,8 +211,8 @@ Due to the deterministic nature of our training pipeline (fixed random seed = 42
 | Component | Specification |
 |-----------|---------------|
 | GPU | 2× NVIDIA T4 (Kaggle) for the v2 run; `code/train_balanced.sh` targets 1 GPU (`device=0`) |
-| VRAM | 16 GB |
-| CPU | Colab shared / variable |
+| VRAM | 16 GB per GPU |
+| CPU | Shared cloud-notebook CPU / variable |
 | RAM | 12–13 GB available |
 
 ### 6.2 Software
