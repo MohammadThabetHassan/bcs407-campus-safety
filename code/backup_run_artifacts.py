@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--run-dir",
-        default=str(repo_root / "runs" / "detect" / "campus_safety_v2_fixed"),
+        default=str(repo_root / "runs" / "detect" / "campus_safety_v3_balanced"),
         help="YOLO run directory containing args.yaml, results.csv, and weights/.",
     )
     parser.add_argument(
