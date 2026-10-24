@@ -33,7 +33,6 @@ def main():
         warmup_epochs=10,
         momentum=0.937,
         weight_decay=0.0005,
-        project="runs",
         name="campus_safety_v3_balanced",
         exist_ok=True,
     )
