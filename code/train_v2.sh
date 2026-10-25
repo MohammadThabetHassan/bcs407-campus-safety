@@ -20,6 +20,5 @@ yolo detect train \
   lr0=0.01 \
   lrf=0.001 \
   warmup_epochs=5 \
-  project=runs \
   name=campus_safety_v2_original \
   exist_ok=True
