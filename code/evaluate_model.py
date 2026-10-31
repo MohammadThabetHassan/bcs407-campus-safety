@@ -280,8 +280,7 @@ def main():
             "model/weights/best_v3.pt",
             "model/weights/best_v2.pt",
             "runs/detect/campus_safety_v3_balanced/weights/best.pt",
-            "runs/detect/campus_safety_v2_balanced/weights/best.pt",
-            "runs/detect/campus_safety_v2_fixed/weights/best.pt",
+            "runs/detect/campus_safety_v2_original/weights/best.pt",
         ]
         for c in candidates:
             p = repo / c
