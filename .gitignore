@@ -3,6 +3,7 @@ campus_safety_merged/
 *.zip
 *.tar.gz
 runs/
+backups/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
