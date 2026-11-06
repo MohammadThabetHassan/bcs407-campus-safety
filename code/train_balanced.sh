@@ -18,7 +18,7 @@ echo "Imgsz:       640"
 echo "Class balance: equalized to 2500 per class"
 echo ""
 
-python -m ultralytics detect train \
+yolo detect train \
   data=dataset/data.yaml \
   model=yolov8m.pt \
   epochs=150 \
