@@ -276,10 +276,12 @@ def main():
     weights = args.weights
     if not weights:
         repo = Path(__file__).resolve().parent.parent
+        # v3 before v2: best_v2.pt is committed, so listing it ahead of the v3 run
+        # made `make evaluate` after `make train-balanced` score the old model.
         candidates = [
             "model/weights/best_v3.pt",
-            "model/weights/best_v2.pt",
             "runs/detect/campus_safety_v3_balanced/weights/best.pt",
+            "model/weights/best_v2.pt",
             "runs/detect/campus_safety_v2_original/weights/best.pt",
         ]
         for c in candidates:
