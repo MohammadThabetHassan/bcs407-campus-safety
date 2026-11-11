@@ -10,9 +10,15 @@ __pycache__/
 _temp_extract/
 *.npy
 *.pt
-dataset/
-model/
-results/
+# Use dir/* (not dir/) so the ! rules below can re-include files:
+# git cannot re-include anything inside an excluded directory.
+dataset/*
+model/*
+!model/weights/
+model/weights/*
+results/*
+!results/plots/
+!results/predictions/
 code/
 report/
 
