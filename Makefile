@@ -21,7 +21,7 @@ help:
 	@echo "  generate-report  Generate all report figures"
 	@echo "  full-pipeline    Run setup → analyze → augment-balance → train-balanced → evaluate → generate-report"
 	@echo "  backup           Backup run artifacts"
-	@echo "  clean            Remove generated dataset (keep zips)"
+	@echo "  clean            Remove generated dataset (keep zips and data.yaml)"
 	@echo "  verify           Quick sanity check"
 
 install:
@@ -71,8 +71,9 @@ full-pipeline: setup analyze augment-balance train-balanced evaluate generate-re
 backup:
 	python code/backup_run_artifacts.py --dest backups/latest
 
+# Keep dataset/data.yaml: it is tracked in git and read by evaluate/train.
 clean:
-	rm -rf dataset/
+	@if [ -d dataset ]; then find dataset -mindepth 1 -maxdepth 1 ! -name data.yaml -exec rm -rf {} +; fi
 	@echo "Dataset removed. Raw zips are preserved in repo root."
 
 verify:
