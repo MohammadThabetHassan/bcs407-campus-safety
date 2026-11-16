@@ -399,7 +399,7 @@ def main():
                     for copy_idx in range(min(num_copies, max_per_orig - 1)):
                         aug_img, aug_bboxes = apply_augmentation(image_path, bboxes, transform)
                         if aug_img is not None and aug_bboxes:
-                            aug_uuid = f"aug_{cls}_{random.randint(100000, 999999)}"
+                            aug_uuid = f"aug_{cls}_{augmented_count:06d}"
                             aug_img_name = f"{aug_uuid}{image_path.suffix}"
                             aug_lbl_name = f"{aug_uuid}.txt"
                             cv2.imwrite(str(train_img_dir / aug_img_name), aug_img)
@@ -440,7 +440,7 @@ def main():
                         mosaic_img, mosaic_bboxes = build_mosaic(
                             pair_paths, pair_bboxes, mild_transform)
                         if mosaic_img is not None and mosaic_bboxes and len(mosaic_bboxes) > 0:
-                            aug_uuid = f"aug_{cls}_{random.randint(100000, 999999)}"
+                            aug_uuid = f"aug_{cls}_{augmented_count:06d}"
                             aug_img_name = f"{aug_uuid}{pair_paths[0].suffix}"
                             aug_lbl_name = f"{aug_uuid}.txt"
                             cv2.imwrite(str(train_img_dir / aug_img_name), mosaic_img)
