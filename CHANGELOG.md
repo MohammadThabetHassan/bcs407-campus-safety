@@ -4,6 +4,9 @@ All notable changes to the BCS407 Campus Safety Detection project.
 
 ## [Unreleased]
 
+### Fixed
+- `code/augment_v2.py` named augmented files `aug_<class>_<random 6 digits>`, so at 2,500 images per class some names repeated and later images overwrote earlier ones while the log still counted them (about 13 of 10,000 with the default seed). Names now use the per-class running count, which is unique within a run and still deterministic under `--seed`.
+
 ### Docs
 - README: live demo link (https://campussafety.eu.cc) and demo screenshot near the top
 - v3 (balanced, 150 epochs) relabelled as planned / not yet trained across README and `docs/`; `docs/EVALUATION.md` is the source of truth for measured results
